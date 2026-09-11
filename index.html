@@ -289,6 +289,38 @@
           <tr><td colspan="6" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
+
+      <div class="encabezado-seccion encabezado-seccion-separado">
+        <div>
+          <h2 class="subtitulo-seccion sin-margen-superior">Presupuestos</h2>
+          <p class="ayuda">
+            Mismos ítems y precios que una venta, más condiciones. Un
+            presupuesto aceptado se convierte en venta con un clic, sin
+            recargar nada.
+          </p>
+        </div>
+        <div class="acciones-encabezado">
+          <button id="btn-abrir-presupuesto" class="boton-primario boton-chico">
+            + Nuevo presupuesto
+          </button>
+        </div>
+      </div>
+
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Ítems</th>
+            <th class="col-numero">Total</th>
+            <th>Estado</th>
+            <th class="col-acciones"></th>
+          </tr>
+        </thead>
+        <tbody id="tabla-presupuestos-body">
+          <tr><td colspan="6" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
     </main>
   </div>
 
@@ -372,6 +404,82 @@
         <button type="button" id="btn-imprimir-remito" class="boton-primario boton-chico">Imprimir</button>
       </div>
     </div>
+  </div>
+
+  <!-- Modal: nuevo/editar presupuesto -->
+  <div id="modal-presupuesto" class="modal-overlay" hidden>
+    <div class="modal-tarjeta modal-tarjeta-ancha">
+      <h3 id="titulo-modal-presupuesto">Nuevo presupuesto</h3>
+      <label>
+        Cliente
+        <input type="text" id="presupuesto-cliente" placeholder="Nombre del cliente" required />
+      </label>
+      <label>
+        Fecha
+        <input type="date" id="presupuesto-fecha" required />
+      </label>
+      <label>
+        Plazo de validez (días)
+        <input type="number" id="presupuesto-plazo" min="1" step="1" placeholder="Ej: 15" required />
+      </label>
+      <label>
+        Condiciones de pago
+        <input type="text" id="presupuesto-condiciones-pago" placeholder="Ej: 50% anticipo, saldo contra entrega" required />
+      </label>
+      <label>
+        Condición de IVA
+        <select id="presupuesto-condicion-iva" required>
+          <option value="no_incluido">IVA no incluido (se suma aparte)</option>
+          <option value="incluido">IVA incluido en el precio</option>
+        </select>
+      </label>
+      <label>
+        Condición de entrega
+        <input type="text" id="presupuesto-condicion-entrega" placeholder="Ej: 20 días desde la aceptación" required />
+      </label>
+      <label>
+        Nota aclaratoria (opcional)
+        <input type="text" id="presupuesto-nota" placeholder="Ej: precios sujetos a disponibilidad de chapa" />
+      </label>
+
+      <p class="ayuda-modal">Ítems del presupuesto</p>
+      <div id="presupuesto-lineas"></div>
+      <button type="button" id="btn-agregar-linea-presupuesto" class="boton-secundario boton-chico boton-agregar-fila">
+        + Agregar producto o conjunto
+      </button>
+
+      <div class="desglose-calculado">
+        <p><span>Neto</span><span id="presupuesto-neto-calculado">$0</span></p>
+        <p><span>IVA</span><span id="presupuesto-iva-calculado">$0</span></p>
+        <p class="desglose-total"><span>Total</span><span id="presupuesto-total-calculado">$0</span></p>
+      </div>
+      <p class="error-form" id="error-presupuesto" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-presupuesto">Cancelar</button>
+        <button type="button" id="btn-guardar-presupuesto" class="boton-primario boton-chico">Registrar presupuesto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: convertir presupuesto en venta -->
+  <div id="modal-convertir-presupuesto" class="modal-overlay" hidden>
+    <form id="form-convertir-presupuesto" class="modal-tarjeta">
+      <h3>Convertir a venta</h3>
+      <p class="ayuda-modal">Los productos y precios se copian tal cual del presupuesto.</p>
+      <label>
+        Fecha de la venta
+        <input type="date" id="convertir-fecha" required />
+      </label>
+      <label>
+        Medio de pago
+        <input type="text" id="convertir-medio-pago" list="lista-medios-pago" placeholder="Ej: Efectivo" required />
+      </label>
+      <p class="error-form" id="error-convertir" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-convertir-presupuesto">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Confirmar venta</button>
+      </div>
+    </form>
   </div>
 
   <!-- Modal: nuevo/editar elemento -->
@@ -693,5 +801,6 @@
   <script type="module" src="js/modulos.js"></script>
   <script type="module" src="js/analisis-produccion.js"></script>
   <script type="module" src="js/ventas.js"></script>
+  <script type="module" src="js/presupuestos.js"></script>
 </body>
 </html>
