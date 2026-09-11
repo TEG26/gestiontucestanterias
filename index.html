@@ -69,7 +69,7 @@
         </div>
         <div class="acciones-encabezado">
           <button id="btn-abrir-nuevo-proveedor" class="boton-secundario boton-chico">
-            + Nuevo proveedor
+            Proveedores
           </button>
           <button id="btn-abrir-nueva-materia" class="boton-secundario boton-chico">
             + Nuevo elemento
@@ -86,10 +86,11 @@
             <th>Elemento</th>
             <th>Unidad</th>
             <th class="col-numero">Stock actual</th>
+            <th class="col-acciones"></th>
           </tr>
         </thead>
         <tbody id="tabla-materiales-body">
-          <tr><td colspan="3" class="fila-vacia">Cargando...</td></tr>
+          <tr><td colspan="4" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
 
@@ -103,19 +104,20 @@
             <th class="col-numero">Cantidad</th>
             <th class="col-numero">Total c/IVA</th>
             <th class="col-numero">IVA</th>
+            <th class="col-acciones"></th>
           </tr>
         </thead>
         <tbody id="tabla-compras-body">
-          <tr><td colspan="6" class="fila-vacia">Cargando...</td></tr>
+          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
     </main>
   </div>
 
-  <!-- Modal: nuevo elemento -->
+  <!-- Modal: nuevo/editar elemento -->
   <div id="modal-nueva-materia" class="modal-overlay" hidden>
     <form id="form-nueva-materia" class="modal-tarjeta">
-      <h3>Nuevo elemento</h3>
+      <h3 id="titulo-modal-materia">Nuevo elemento</h3>
       <label>
         Nombre
         <input type="text" id="nueva-materia-nombre" placeholder="Ej: Chapa #22 1x2m" required />
@@ -134,31 +136,37 @@
       <p class="error-form" id="error-nueva-materia" hidden></p>
       <div class="modal-acciones">
         <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-nueva-materia">Cancelar</button>
-        <button type="submit" class="boton-primario boton-chico">Crear</button>
+        <button type="submit" id="btn-guardar-materia" class="boton-primario boton-chico">Crear</button>
       </div>
     </form>
   </div>
 
-  <!-- Modal: nuevo proveedor -->
+  <!-- Modal: proveedores (lista + alta/edición) -->
   <div id="modal-nuevo-proveedor" class="modal-overlay" hidden>
-    <form id="form-nuevo-proveedor" class="modal-tarjeta">
-      <h3>Nuevo proveedor</h3>
-      <label>
-        Nombre
-        <input type="text" id="nuevo-proveedor-nombre" placeholder="Ej: Hierronor" required />
-      </label>
-      <p class="error-form" id="error-nuevo-proveedor" hidden></p>
-      <div class="modal-acciones">
-        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-nuevo-proveedor">Cancelar</button>
-        <button type="submit" class="boton-primario boton-chico">Crear</button>
-      </div>
-    </form>
+    <div class="modal-tarjeta modal-tarjeta-ancha">
+      <h3>Proveedores</h3>
+      <ul id="lista-proveedores" class="lista-simple">
+        <li class="fila-vacia">Todavía no hay proveedores cargados.</li>
+      </ul>
+      <form id="form-nuevo-proveedor">
+        <label>
+          <span id="form-proveedor-etiqueta">Nuevo proveedor</span>
+          <input type="text" id="nuevo-proveedor-nombre" placeholder="Ej: Hierronor" required />
+        </label>
+        <p class="error-form" id="error-nuevo-proveedor" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-edicion-proveedor" class="boton-secundario boton-chico" hidden>Cancelar edición</button>
+          <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-nuevo-proveedor">Cerrar</button>
+          <button type="submit" id="btn-guardar-proveedor" class="boton-primario boton-chico">Crear</button>
+        </div>
+      </form>
+    </div>
   </div>
 
-  <!-- Modal: registrar compra -->
+  <!-- Modal: registrar/editar compra -->
   <div id="modal-compra" class="modal-overlay" hidden>
     <form id="form-compra" class="modal-tarjeta">
-      <h3>Registrar compra</h3>
+      <h3 id="titulo-modal-compra">Registrar compra</h3>
       <label>
         Elemento
         <select id="compra-materia" required>
@@ -179,19 +187,23 @@
         Precio unitario
         <input type="number" id="compra-precio-unitario" min="0" step="any" required />
       </label>
-      <label class="label-checkbox">
-        <input type="checkbox" id="compra-iva-incluido" />
-        El precio unitario ingresado ya incluye IVA
+      <label>
+        Facturación
+        <select id="compra-tipo-factura" required>
+          <option value="con_iva_no_incluido" selected>Con factura — precio sin IVA (se suma 21%)</option>
+          <option value="con_iva_incluido">Con factura — precio con IVA incluido</option>
+          <option value="sin_factura">Sin factura (no aplica IVA)</option>
+        </select>
       </label>
       <div class="desglose-calculado">
         <p><span>Neto</span><span id="compra-neto-calculado">$0</span></p>
-        <p><span>IVA (21%)</span><span id="compra-iva-calculado">$0</span></p>
+        <p><span>IVA</span><span id="compra-iva-calculado">$0</span></p>
         <p class="desglose-total"><span>Total</span><span id="compra-total-calculado">$0</span></p>
       </div>
       <p class="error-form" id="error-compra" hidden></p>
       <div class="modal-acciones">
         <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-compra">Cancelar</button>
-        <button type="submit" class="boton-primario boton-chico">Registrar compra</button>
+        <button type="submit" id="btn-guardar-compra" class="boton-primario boton-chico">Registrar compra</button>
       </div>
     </form>
   </div>

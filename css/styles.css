@@ -324,10 +324,71 @@ button {
   font-family: var(--font-mono);
 }
 
+.tabla-datos .col-acciones {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .tabla-datos .fila-vacia {
   text-align: center;
   color: var(--text-muted);
   padding: 24px;
+}
+
+.boton-accion-fila {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--steel);
+  padding: 4px 6px;
+  text-decoration: underline;
+}
+
+.boton-accion-fila:hover {
+  color: var(--accent-dark);
+}
+
+.boton-accion-fila.peligro {
+  color: var(--danger);
+}
+
+.modal-tarjeta-ancha {
+  max-width: 480px;
+}
+
+.lista-simple {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+}
+
+.lista-simple li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lista-simple li:last-child {
+  border-bottom: none;
+}
+
+.lista-simple li.fila-vacia {
+  color: var(--text-muted);
+  justify-content: center;
+  padding: 20px;
+}
+
+.lista-simple .acciones-fila {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 /* ---------- Modales ---------- */
