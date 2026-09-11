@@ -275,6 +275,22 @@ button {
   margin: 40px 0 12px;
 }
 
+.encabezado-seccion-separado {
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.sin-margen-superior {
+  margin-top: 0;
+}
+
+.ayuda-modal {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: -12px 0 16px;
+}
+
 .boton-chico {
   padding: 9px 16px;
   font-size: 13px;
@@ -389,6 +405,52 @@ button {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+}
+
+.fila-receta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.fila-receta select {
+  flex-grow: 1;
+  margin: 0;
+}
+
+.fila-receta input {
+  width: 110px;
+  margin: 0;
+}
+
+.fila-receta .boton-quitar-fila {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--danger);
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.fila-receta .boton-quitar-fila:hover {
+  border-color: var(--danger);
+}
+
+.boton-agregar-fila {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.receta-resumen {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 /* ---------- Modales ---------- */
