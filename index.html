@@ -59,16 +59,117 @@
     </aside>
 
     <main class="app-contenido">
-      <h1>Stock y Producción</h1>
-      <p class="ayuda">
-        Acceso confirmado. Este es el punto de partida de la Etapa 1 —
-        acá va a ir el panel de materias primas, productos, producción
-        y stock.
-      </p>
+      <div class="encabezado-seccion">
+        <div>
+          <h1>Materias primas</h1>
+          <p class="ayuda">
+            Stock actual de insumos. Una compra suma stock y registra el
+            gasto en el mismo paso.
+          </p>
+        </div>
+        <div class="acciones-encabezado">
+          <button id="btn-abrir-nueva-materia" class="boton-secundario boton-chico">
+            + Nueva materia prima
+          </button>
+          <button id="btn-abrir-compra" class="boton-primario boton-chico">
+            + Registrar compra
+          </button>
+        </div>
+      </div>
+
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Material</th>
+            <th>Unidad</th>
+            <th class="col-numero">Stock actual</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-materiales-body">
+          <tr><td colspan="3" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="subtitulo-seccion">Compras recientes</h2>
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Material</th>
+            <th>Proveedor</th>
+            <th class="col-numero">Cantidad</th>
+            <th class="col-numero">Precio total</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-compras-body">
+          <tr><td colspan="5" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
     </main>
+  </div>
+
+  <!-- Modal: nueva materia prima -->
+  <div id="modal-nueva-materia" class="modal-overlay" hidden>
+    <form id="form-nueva-materia" class="modal-tarjeta">
+      <h3>Nueva materia prima</h3>
+      <label>
+        Nombre
+        <input type="text" id="nueva-materia-nombre" placeholder="Ej: Chapa #22 1x2m" required />
+      </label>
+      <label>
+        Unidad de medida
+        <input type="text" id="nueva-materia-unidad" placeholder="Ej: m2, kg, unidad" list="lista-unidades" required />
+        <datalist id="lista-unidades">
+          <option value="unidad"></option>
+          <option value="m2"></option>
+          <option value="m"></option>
+          <option value="kg"></option>
+          <option value="l"></option>
+        </datalist>
+      </label>
+      <p class="error-form" id="error-nueva-materia" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-nueva-materia">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Crear</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: registrar compra -->
+  <div id="modal-compra" class="modal-overlay" hidden>
+    <form id="form-compra" class="modal-tarjeta">
+      <h3>Registrar compra</h3>
+      <label>
+        Material
+        <select id="compra-materia" required>
+          <option value="" disabled selected>Elegir material...</option>
+        </select>
+      </label>
+      <label>
+        Proveedor
+        <input type="text" id="compra-proveedor" placeholder="Nombre del proveedor" required />
+      </label>
+      <label>
+        Cantidad
+        <input type="number" id="compra-cantidad" min="0.01" step="any" required />
+      </label>
+      <label>
+        Precio unitario
+        <input type="number" id="compra-precio-unitario" min="0" step="any" required />
+      </label>
+      <p class="total-calculado">
+        Total: <span id="compra-total-calculado">$0</span>
+      </p>
+      <p class="error-form" id="error-compra" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-compra">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Registrar compra</button>
+      </div>
+    </form>
   </div>
 
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/materias-primas.js"></script>
 </body>
 </html>
