@@ -21,6 +21,11 @@ let materialesCache = [];
 let productosCache = [];
 
 const formatoNumero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
+const formatoMoneda = new Intl.NumberFormat("es-AR", {
+  style: "currency",
+  currency: "ARS",
+  maximumFractionDigits: 2
+});
 
 onSnapshot(query(materiasPrimasRef, orderBy("nombre")), (snapshot) => {
   materialesCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -31,6 +36,7 @@ onSnapshot(query(materiasPrimasRef, orderBy("nombre")), (snapshot) => {
     select.innerHTML = opcionesElementos();
     if (materialesCache.some((m) => m.id === valorPrevio)) select.value = valorPrevio;
   });
+  renderTablaProductos();
 });
 
 function opcionesElementos() {
@@ -56,24 +62,52 @@ function resumenReceta(receta) {
   return receta.map((r) => `${nombreElemento(r.materiaId)} (${formatoNumero.format(r.cantidadPorUnidad)})`).join(", ");
 }
 
+// Costo de fabricación = suma de (cantidad de receta × último costo neto
+// conocido de ese elemento). Si algún elemento nunca tuvo una compra
+// registrada, ese costo cuenta como 0 — el número entonces queda
+// incompleto, así que se lo marca aparte en vez de mostrarlo como si
+// fuera exacto.
+function calcularCosto(receta) {
+  if (!receta || receta.length === 0) return { costo: 0, completo: false };
+  let costo = 0;
+  let completo = true;
+  receta.forEach((r) => {
+    const elemento = materialesCache.find((m) => m.id === r.materiaId);
+    if (!elemento || !elemento.ultimoCostoNeto) {
+      completo = false;
+      return;
+    }
+    costo += r.cantidadPorUnidad * elemento.ultimoCostoNeto;
+  });
+  return { costo, completo };
+}
+
 function renderTablaProductos() {
   if (productosCache.length === 0) {
     tablaProductosBody.innerHTML =
-      '<tr><td colspan="5" class="fila-vacia">Todavía no cargaste ningún producto.</td></tr>';
+      '<tr><td colspan="7" class="fila-vacia">Todavía no cargaste ningún producto.</td></tr>';
     return;
   }
   tablaProductosBody.innerHTML = productosCache
     .map((p) => {
       const resumen = resumenReceta(p.receta);
+      const { costo, completo } = calcularCosto(p.receta);
+      const costoTexto =
+        !p.receta || p.receta.length === 0
+          ? "—"
+          : `${formatoMoneda.format(costo)}${completo ? "" : " (incompleto)"}`;
       return `
       <tr>
         <td>${escapeHtml(p.nombre)}</td>
         <td>${escapeHtml(p.unidad)}</td>
         <td class="col-numero">${formatoNumero.format(p.stockActual || 0)}</td>
         <td><span class="receta-resumen" title="${escapeHtml(resumen)}">${escapeHtml(resumen)}</span></td>
+        <td class="col-numero">${costoTexto}</td>
+        <td class="col-numero">${p.precioVenta ? formatoMoneda.format(p.precioVenta) : "—"}</td>
         <td class="col-acciones">
           <button type="button" class="boton-accion-fila" data-editar-producto="${p.id}">Editar</button>
           <button type="button" class="boton-accion-fila" data-editar-receta="${p.id}">Receta</button>
+          <button type="button" class="boton-accion-fila" data-editar-precio="${p.id}">Precio</button>
           <button type="button" class="boton-accion-fila peligro" data-eliminar-producto="${p.id}">Eliminar</button>
         </td>
       </tr>`;
@@ -113,6 +147,7 @@ document.getElementById("btn-abrir-nuevo-producto").addEventListener("click", ()
 tablaProductosBody.addEventListener("click", (e) => {
   const idEditar = e.target.dataset.editarProducto;
   const idReceta = e.target.dataset.editarReceta;
+  const idPrecio = e.target.dataset.editarPrecio;
   const idEliminar = e.target.dataset.eliminarProducto;
 
   if (idEditar) {
@@ -129,6 +164,10 @@ tablaProductosBody.addEventListener("click", (e) => {
 
   if (idReceta) {
     abrirModalReceta(idReceta);
+  }
+
+  if (idPrecio) {
+    abrirModalPrecio(idPrecio);
   }
 
   if (idEliminar) {
@@ -264,6 +303,57 @@ btnGuardarReceta.addEventListener("click", async () => {
     errorReceta.hidden = false;
   } finally {
     btnGuardarReceta.disabled = false;
+  }
+});
+
+// =====================================================================
+// Modal: precio de venta
+// =====================================================================
+
+const modalPrecio = document.getElementById("modal-precio-producto");
+const formPrecio = document.getElementById("form-precio-producto");
+const errorPrecio = document.getElementById("error-precio-producto");
+const inputPrecioValor = document.getElementById("precio-producto-valor");
+const textoPrecioCosto = document.getElementById("precio-producto-costo");
+const tituloModalPrecio = document.getElementById("titulo-modal-precio-producto");
+
+let productoPrecioActualId = null;
+
+function abrirModalPrecio(productoId) {
+  const producto = productosCache.find((p) => p.id === productoId);
+  if (!producto) return;
+
+  productoPrecioActualId = productoId;
+  tituloModalPrecio.textContent = `Precio de venta — ${producto.nombre}`;
+  const { costo, completo } = calcularCosto(producto.receta);
+  textoPrecioCosto.textContent =
+    !producto.receta || producto.receta.length === 0
+      ? "Este producto todavía no tiene receta cargada."
+      : `Costo de fabricación: ${formatoMoneda.format(costo)}${completo ? "" : " (incompleto — falta el costo de algún elemento)"}`;
+  inputPrecioValor.value = producto.precioVenta || "";
+  errorPrecio.hidden = true;
+  abrirModal(modalPrecio);
+}
+
+formPrecio.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errorPrecio.hidden = true;
+  const precioVenta = parseFloat(inputPrecioValor.value);
+  if (!(precioVenta >= 0)) return;
+
+  deshabilitarForm(formPrecio, true);
+  try {
+    await updateDoc(doc(productosRef, productoPrecioActualId), {
+      precioVenta,
+      actualizadoEn: serverTimestamp()
+    });
+    cerrarModal(modalPrecio);
+  } catch (error) {
+    console.error(error);
+    errorPrecio.textContent = "No se pudo guardar el precio. Probá de nuevo.";
+    errorPrecio.hidden = false;
+  } finally {
+    deshabilitarForm(formPrecio, false);
   }
 });
 

@@ -46,7 +46,7 @@ const tablaMaterialesBody = document.getElementById("tabla-materiales-body");
 function renderTablaMateriales(materiales) {
   if (materiales.length === 0) {
     tablaMaterialesBody.innerHTML =
-      '<tr><td colspan="4" class="fila-vacia">Todavía no cargaste ningún elemento.</td></tr>';
+      '<tr><td colspan="5" class="fila-vacia">Todavía no cargaste ningún elemento.</td></tr>';
     return;
   }
   tablaMaterialesBody.innerHTML = materiales
@@ -56,6 +56,7 @@ function renderTablaMateriales(materiales) {
         <td>${escapeHtml(m.nombre)}</td>
         <td>${escapeHtml(m.unidad)}</td>
         <td class="col-numero">${formatoNumero.format(m.stockActual || 0)}</td>
+        <td class="col-numero">${m.ultimoCostoNeto ? formatoMoneda.format(m.ultimoCostoNeto) : "—"}</td>
         <td class="col-acciones">
           <button type="button" class="boton-accion-fila" data-editar-elemento="${m.id}">Editar</button>
           <button type="button" class="boton-accion-fila peligro" data-eliminar-elemento="${m.id}">Eliminar</button>
@@ -623,9 +624,30 @@ function calcularTotalesCompra(items, tipoFactura) {
   };
 }
 
+// Costo neto por unidad de cada elemento, agregando (promedio ponderado)
+// si el mismo elemento aparece en más de una línea de esta compra. Se
+// usa solo al REGISTRAR una compra nueva — editar o borrar una compra
+// vieja no reprocesa este costo, así que siempre refleja el precio de
+// la última compra cargada, no un histórico.
+function calcularCostoNetoPorElemento(items, tipoFactura) {
+  const acumulado = {}; // materiaId -> { totalNeto, cantidad }
+  items.forEach((it) => {
+    const { totalNeto } = desgloseDesdeTotal(it.montoTotalLinea, tipoFactura);
+    if (!acumulado[it.materiaId]) acumulado[it.materiaId] = { totalNeto: 0, cantidad: 0 };
+    acumulado[it.materiaId].totalNeto += totalNeto;
+    acumulado[it.materiaId].cantidad += it.cantidad;
+  });
+  const costoPorElemento = {};
+  Object.entries(acumulado).forEach(([materiaId, { totalNeto, cantidad }]) => {
+    costoPorElemento[materiaId] = cantidad > 0 ? totalNeto / cantidad : 0;
+  });
+  return costoPorElemento;
+}
+
 async function registrarCompra({ fecha, proveedorId, tipoFactura, items }) {
   const cantidadesPorElemento = agruparCantidadesPorElemento(items);
   const totales = calcularTotalesCompra(items, tipoFactura);
+  const costoNetoPorElemento = calcularCostoNetoPorElemento(items, tipoFactura);
 
   await runTransaction(db, async (tx) => {
     const lecturas = [];
@@ -639,6 +661,8 @@ async function registrarCompra({ fecha, proveedorId, tipoFactura, items }) {
     lecturas.forEach(({ ref, materiaId, stockActual }) => {
       tx.update(ref, {
         stockActual: stockActual + cantidadesPorElemento[materiaId],
+        ultimoCostoNeto: round2(costoNetoPorElemento[materiaId]),
+        ultimoCostoFecha: fecha,
         actualizadoEn: serverTimestamp()
       });
     });

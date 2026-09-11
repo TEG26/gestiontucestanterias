@@ -87,11 +87,12 @@
             <th>Elemento</th>
             <th>Unidad</th>
             <th class="col-numero">Stock actual</th>
+            <th class="col-numero">Último costo</th>
             <th class="col-acciones"></th>
           </tr>
         </thead>
         <tbody id="tabla-materiales-body">
-          <tr><td colspan="4" class="fila-vacia">Cargando...</td></tr>
+          <tr><td colspan="5" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
 
@@ -134,11 +135,13 @@
             <th>Unidad</th>
             <th class="col-numero">Stock actual</th>
             <th>Receta</th>
+            <th class="col-numero">Costo</th>
+            <th class="col-numero">Precio venta</th>
             <th class="col-acciones"></th>
           </tr>
         </thead>
         <tbody id="tabla-productos-body">
-          <tr><td colspan="5" class="fila-vacia">Cargando...</td></tr>
+          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
 
@@ -199,11 +202,13 @@
             <th>Conjunto</th>
             <th>Composición</th>
             <th class="col-numero">Equivalentes hoy</th>
+            <th class="col-numero">Costo</th>
+            <th class="col-numero">Precio venta</th>
             <th class="col-acciones"></th>
           </tr>
         </thead>
         <tbody id="tabla-modulos-body">
-          <tr><td colspan="4" class="fila-vacia">Cargando...</td></tr>
+          <tr><td colspan="6" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
     </main>
@@ -360,6 +365,23 @@
       <div class="modal-acciones">
         <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-nuevo-producto">Cancelar</button>
         <button type="submit" id="btn-guardar-producto" class="boton-primario boton-chico">Crear</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: precio de venta de un producto -->
+  <div id="modal-precio-producto" class="modal-overlay" hidden>
+    <form id="form-precio-producto" class="modal-tarjeta">
+      <h3 id="titulo-modal-precio-producto">Precio de venta</h3>
+      <p class="ayuda-modal" id="precio-producto-costo"></p>
+      <label>
+        Precio de venta
+        <input type="number" id="precio-producto-valor" min="0" step="any" required />
+      </label>
+      <p class="error-form" id="error-precio-producto" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-precio-producto">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Guardar</button>
       </div>
     </form>
   </div>
@@ -523,6 +545,23 @@
         <button type="button" id="btn-guardar-composicion" class="boton-primario boton-chico">Guardar composición</button>
       </div>
     </div>
+  </div>
+
+  <!-- Modal: precio de venta de un conjunto -->
+  <div id="modal-precio-modulo" class="modal-overlay" hidden>
+    <form id="form-precio-modulo" class="modal-tarjeta">
+      <h3 id="titulo-modal-precio-modulo">Precio de venta</h3>
+      <p class="ayuda-modal" id="precio-modulo-costo"></p>
+      <label>
+        Precio de venta
+        <input type="number" id="precio-modulo-valor" min="0" step="any" required />
+      </label>
+      <p class="error-form" id="error-precio-modulo" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-precio-modulo">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Guardar</button>
+      </div>
+    </form>
   </div>
 
   <script type="module" src="js/firebase-config.js"></script>

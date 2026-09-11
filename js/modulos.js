@@ -22,6 +22,11 @@ let materialesCache = [];
 let modulosCache = [];
 
 const formatoNumero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
+const formatoMoneda = new Intl.NumberFormat("es-AR", {
+  style: "currency",
+  currency: "ARS",
+  maximumFractionDigits: 2
+});
 
 function escapeHtml(str) {
   const div = document.createElement("div");
@@ -56,6 +61,41 @@ function stockItem(tipo, refId) {
   }
   const p = productosCache.find((x) => x.id === refId);
   return p ? p.stockActual || 0 : 0;
+}
+
+// Costo unitario de un ítem de la composición: si es un elemento
+// comprado directo, su último costo de compra; si es un producto
+// fabricado, el costo de su propia receta. Devuelve null si no se puede
+// calcular todavía (falta algún costo de compra en la cadena).
+function costoUnitarioItem(tipo, refId) {
+  if (tipo === "elemento") {
+    const m = materialesCache.find((x) => x.id === refId);
+    return m && m.ultimoCostoNeto ? m.ultimoCostoNeto : null;
+  }
+  const p = productosCache.find((x) => x.id === refId);
+  if (!p || !p.receta || p.receta.length === 0) return null;
+  let total = 0;
+  for (const r of p.receta) {
+    const elemento = materialesCache.find((x) => x.id === r.materiaId);
+    if (!elemento || !elemento.ultimoCostoNeto) return null;
+    total += r.cantidadPorUnidad * elemento.ultimoCostoNeto;
+  }
+  return total;
+}
+
+function calcularCostoConjunto(composicion) {
+  if (!composicion || composicion.length === 0) return { costo: 0, completo: false };
+  let costo = 0;
+  let completo = true;
+  composicion.map(normalizarItem).forEach((c) => {
+    const costoUnitario = costoUnitarioItem(c.tipo, c.refId);
+    if (costoUnitario === null) {
+      completo = false;
+      return;
+    }
+    costo += costoUnitario * c.cantidad;
+  });
+  return { costo, completo };
 }
 
 function opcionesComposicion() {
@@ -123,21 +163,29 @@ function equivalentesHoy(composicion) {
 
 function renderTablaModulos() {
   if (modulosCache.length === 0) {
-    tablaModulosBody.innerHTML = '<tr><td colspan="4" class="fila-vacia">Todavía no cargaste ningún conjunto.</td></tr>';
+    tablaModulosBody.innerHTML = '<tr><td colspan="6" class="fila-vacia">Todavía no cargaste ningún conjunto.</td></tr>';
     return;
   }
   tablaModulosBody.innerHTML = modulosCache
     .map((m) => {
       const resumen = resumenComposicion(m.composicion);
       const equivalentes = equivalentesHoy(m.composicion);
+      const { costo, completo } = calcularCostoConjunto(m.composicion);
+      const costoTexto =
+        !m.composicion || m.composicion.length === 0
+          ? "—"
+          : `${formatoMoneda.format(costo)}${completo ? "" : " (incompleto)"}`;
       return `
       <tr>
         <td>${escapeHtml(m.nombre)}</td>
         <td><span class="receta-resumen" title="${escapeHtml(resumen)}">${escapeHtml(resumen)}</span></td>
         <td class="col-numero">${equivalentes === null ? "—" : formatoNumero.format(equivalentes)}</td>
+        <td class="col-numero">${costoTexto}</td>
+        <td class="col-numero">${m.precioVenta ? formatoMoneda.format(m.precioVenta) : "—"}</td>
         <td class="col-acciones">
           <button type="button" class="boton-accion-fila" data-editar-modulo="${m.id}">Editar</button>
           <button type="button" class="boton-accion-fila" data-editar-composicion="${m.id}">Composición</button>
+          <button type="button" class="boton-accion-fila" data-editar-precio="${m.id}">Precio</button>
           <button type="button" class="boton-accion-fila peligro" data-eliminar-modulo="${m.id}">Eliminar</button>
         </td>
       </tr>`;
@@ -175,6 +223,7 @@ document.getElementById("btn-abrir-nuevo-modulo").addEventListener("click", () =
 tablaModulosBody.addEventListener("click", (e) => {
   const idEditar = e.target.dataset.editarModulo;
   const idComposicion = e.target.dataset.editarComposicion;
+  const idPrecio = e.target.dataset.editarPrecio;
   const idEliminar = e.target.dataset.eliminarModulo;
 
   if (idEditar) {
@@ -190,6 +239,10 @@ tablaModulosBody.addEventListener("click", (e) => {
 
   if (idComposicion) {
     abrirModalComposicion(idComposicion);
+  }
+
+  if (idPrecio) {
+    abrirModalPrecio(idPrecio);
   }
 
   if (idEliminar) {
@@ -314,6 +367,57 @@ btnGuardarComposicion.addEventListener("click", async () => {
     errorComposicion.hidden = false;
   } finally {
     btnGuardarComposicion.disabled = false;
+  }
+});
+
+// =====================================================================
+// Modal: precio de venta
+// =====================================================================
+
+const modalPrecio = document.getElementById("modal-precio-modulo");
+const formPrecio = document.getElementById("form-precio-modulo");
+const errorPrecio = document.getElementById("error-precio-modulo");
+const inputPrecioValor = document.getElementById("precio-modulo-valor");
+const textoPrecioCosto = document.getElementById("precio-modulo-costo");
+const tituloModalPrecio = document.getElementById("titulo-modal-precio-modulo");
+
+let moduloPrecioActualId = null;
+
+function abrirModalPrecio(moduloId) {
+  const modulo = modulosCache.find((m) => m.id === moduloId);
+  if (!modulo) return;
+
+  moduloPrecioActualId = moduloId;
+  tituloModalPrecio.textContent = `Precio de venta — ${modulo.nombre}`;
+  const { costo, completo } = calcularCostoConjunto(modulo.composicion);
+  textoPrecioCosto.textContent =
+    !modulo.composicion || modulo.composicion.length === 0
+      ? "Este conjunto todavía no tiene composición cargada."
+      : `Costo: ${formatoMoneda.format(costo)}${completo ? "" : " (incompleto — falta el costo de algún elemento)"}`;
+  inputPrecioValor.value = modulo.precioVenta || "";
+  errorPrecio.hidden = true;
+  abrirModal(modalPrecio);
+}
+
+formPrecio.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errorPrecio.hidden = true;
+  const precioVenta = parseFloat(inputPrecioValor.value);
+  if (!(precioVenta >= 0)) return;
+
+  deshabilitarForm(formPrecio, true);
+  try {
+    await updateDoc(doc(modulosRef, moduloPrecioActualId), {
+      precioVenta,
+      actualizadoEn: serverTimestamp()
+    });
+    cerrarModal(modalPrecio);
+  } catch (error) {
+    console.error(error);
+    errorPrecio.textContent = "No se pudo guardar el precio. Probá de nuevo.";
+    errorPrecio.hidden = false;
+  } finally {
+    deshabilitarForm(formPrecio, false);
   }
 });
 
