@@ -76,6 +76,14 @@ button {
   margin: 0 0 4px;
 }
 
+.logo-login {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  margin: 0 auto 4px;
+}
+
 .tarjeta-login .subtitulo {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -173,6 +181,14 @@ button {
   font-size: 16px;
   font-weight: 700;
   margin: 0 0 2px;
+}
+
+.logo-sidebar {
+  display: block;
+  width: 100%;
+  max-width: 170px;
+  height: auto;
+  margin-bottom: 6px;
 }
 
 .app-sidebar .subtitulo {
