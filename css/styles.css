@@ -1,0 +1,257 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+:root {
+  --bg: #edeef0;
+  --surface: #ffffff;
+  --text: #1c2024;
+  --text-muted: #5b6470;
+  --steel: #3a4a5c;
+  --steel-dark: #263340;
+  --accent: #e8871e;
+  --accent-dark: #c96f12;
+  --success: #2f7d5c;
+  --danger: #b3432f;
+  --border: #d7d9dc;
+  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--text);
+  background: var(--bg);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(58, 74, 92, 0.05) 0px,
+    rgba(58, 74, 92, 0.05) 1px,
+    transparent 1px,
+    transparent 64px
+  );
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---------- Pantalla: login ---------- */
+
+.pantalla-centrada {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.tarjeta-login {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 6px 6px 0 rgba(58, 74, 92, 0.12);
+  padding: 40px 36px;
+  text-align: center;
+}
+
+.tarjeta-login .marca {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.tarjeta-login .subtitulo {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 32px;
+}
+
+.boton-google {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 13px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.15s ease;
+}
+
+.boton-google:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.boton-google:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.boton-google svg {
+  flex-shrink: 0;
+}
+
+.nota-acceso {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ---------- Pantalla: no autorizado ---------- */
+
+.tarjeta-login.no-autorizado {
+  box-shadow: 6px 6px 0 rgba(179, 67, 47, 0.12);
+}
+
+.tarjeta-login.no-autorizado .marca {
+  color: var(--danger);
+}
+
+.email-destacado {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  margin: 16px 0 24px;
+  word-break: break-all;
+}
+
+.boton-secundario {
+  width: 100%;
+  background: transparent;
+  color: var(--steel);
+  border: 1px solid var(--border);
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.boton-secundario:hover {
+  border-color: var(--steel);
+}
+
+/* ---------- Shell de la app ---------- */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--steel-dark);
+  color: #fff;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-sidebar .marca {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.app-sidebar .subtitulo {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 32px;
+}
+
+.app-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-grow: 1;
+}
+
+.app-nav li {
+  margin-bottom: 4px;
+}
+
+.app-nav button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.75);
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 3px;
+}
+
+.app-nav button.activo {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-weight: 500;
+}
+
+.app-nav button:disabled {
+  color: rgba(255, 255, 255, 0.3);
+  cursor: default;
+}
+
+.app-usuario {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 16px;
+  font-size: 13px;
+}
+
+.app-usuario .nombre {
+  display: block;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.app-usuario button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.75);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.app-usuario button:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
+
+.app-contenido {
+  flex-grow: 1;
+  padding: 40px 48px;
+}
+
+.app-contenido h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.app-contenido .ayuda {
+  color: var(--text-muted);
+  max-width: 480px;
+  line-height: 1.6;
+}

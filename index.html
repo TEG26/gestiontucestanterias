@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tucumán Estanterías — Gestión</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- Pantalla: login -->
+  <section id="pantalla-login" class="pantalla-centrada">
+    <div class="tarjeta-login">
+      <p class="marca">Tucumán Estanterías</p>
+      <p class="subtitulo">Gestión interna — Factory Holding S.A.S.</p>
+      <button id="btn-login" class="boton-google">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z" fill="#fff"/>
+          <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.83.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.9v2.33A9 9 0 0 0 9 18z" fill="#fff" fill-opacity=".85"/>
+          <path d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.9A9 9 0 0 0 0 9c0 1.45.35 2.83.9 4.03l3.05-2.33z" fill="#fff" fill-opacity=".7"/>
+          <path d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .9 4.97l3.05 2.33C4.66 5.17 6.65 3.58 9 3.58z" fill="#fff" fill-opacity=".55"/>
+        </svg>
+        Continuar con Google
+      </button>
+      <p class="nota-acceso">
+        Acceso restringido a los usuarios autorizados del negocio.
+      </p>
+    </div>
+  </section>
+
+  <!-- Pantalla: email no autorizado -->
+  <section id="pantalla-no-autorizado" class="pantalla-centrada" hidden>
+    <div class="tarjeta-login no-autorizado">
+      <p class="marca">Acceso no autorizado</p>
+      <p class="subtitulo">Esta cuenta no tiene permiso para entrar</p>
+      <p class="email-destacado" id="email-no-autorizado"></p>
+      <button id="btn-volver-login" class="boton-secundario">
+        Probar con otra cuenta
+      </button>
+    </div>
+  </section>
+
+  <!-- Pantalla: app (shell) -->
+  <div id="pantalla-app" class="app-shell" hidden>
+    <aside class="app-sidebar">
+      <p class="marca">Tucumán Estanterías</p>
+      <p class="subtitulo">Factory Holding S.A.S.</p>
+
+      <ul class="app-nav">
+        <li><button class="activo">Stock y Producción</button></li>
+        <li><button disabled title="Próximamente">Ventas y Presupuestos</button></li>
+        <li><button disabled title="Próximamente">Egresos y Balance</button></li>
+      </ul>
+
+      <div class="app-usuario">
+        <span class="nombre" id="nombre-usuario"></span>
+        <button id="btn-logout">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <main class="app-contenido">
+      <h1>Stock y Producción</h1>
+      <p class="ayuda">
+        Acceso confirmado. Este es el punto de partida de la Etapa 1 —
+        acá va a ir el panel de materias primas, productos, producción
+        y stock.
+      </p>
+    </main>
+  </div>
+
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function estaAutorizado() {
+      return request.auth != null &&
+        request.auth.token.email in [
+          "carlosaugustocaceres65@gmail.com",
+          "tucumanestanterias@hotmail.com",
+          "josemariamonti@gmail.com",
+          "virg7807@gmail.com"
+        ];
+    }
+
+    // Toda la base es de uso exclusivo de los dueños del negocio:
+    // mismo criterio de acceso para todas las colecciones presentes
+    // y futuras (Etapa 1, 2 y 3).
+    match /{document=**} {
+      allow read, write: if estaAutorizado();
+    }
+  }
+}
