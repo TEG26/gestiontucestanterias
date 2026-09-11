@@ -226,6 +226,14 @@ button {
   font-weight: 500;
 }
 
+.app-nav button:not(:disabled) {
+  cursor: pointer;
+}
+
+.app-nav button:not(:disabled):not(.activo):hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .app-nav button:disabled {
   color: rgba(255, 255, 255, 0.3);
   cursor: default;
@@ -440,7 +448,38 @@ button {
   margin: 0;
 }
 
-.fila-receta .boton-quitar-fila {
+.linea-compra {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.linea-compra .linea-elemento {
+  flex: 2 1 160px;
+  margin: 0;
+}
+
+.linea-compra .linea-cantidad {
+  flex: 1 1 80px;
+  width: auto;
+  margin: 0;
+}
+
+.linea-compra .linea-modo-precio {
+  flex: 1 1 130px;
+  margin: 0;
+}
+
+.linea-compra .linea-monto {
+  flex: 1 1 90px;
+  width: auto;
+  margin: 0;
+}
+
+.fila-receta .boton-quitar-fila,
+.linea-compra .boton-quitar-fila {
   background: none;
   border: 1px solid var(--border);
   color: var(--danger);
@@ -451,7 +490,8 @@ button {
   line-height: 1;
 }
 
-.fila-receta .boton-quitar-fila:hover {
+.fila-receta .boton-quitar-fila:hover,
+.linea-compra .boton-quitar-fila:hover {
   border-color: var(--danger);
 }
 
@@ -498,6 +538,33 @@ button {
 .estado-pendiente {
   color: var(--accent-dark);
   font-weight: 600;
+}
+
+.calculadora-analisis {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  margin: 16px 0;
+  max-width: 480px;
+}
+
+.calculadora-analisis label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.calculadora-analisis input,
+.calculadora-analisis select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
 }
 
 /* ---------- Modales ---------- */

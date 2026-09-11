@@ -42,7 +42,6 @@ const formatoFecha = new Intl.DateTimeFormat("es-AR", {
 // =====================================================================
 
 const tablaMaterialesBody = document.getElementById("tabla-materiales-body");
-const selectCompraMateria = document.getElementById("compra-materia");
 
 function renderTablaMateriales(materiales) {
   if (materiales.length === 0) {
@@ -66,22 +65,29 @@ function renderTablaMateriales(materiales) {
     .join("");
 }
 
-function renderSelectCompraMateria(materiales) {
-  const valorPrevio = selectCompraMateria.value;
-  selectCompraMateria.innerHTML =
+function opcionesElementos() {
+  return (
     '<option value="" disabled selected>Elegir elemento...</option>' +
-    materiales
+    materialesCache
       .map((m) => `<option value="${m.id}">${escapeHtml(m.nombre)} (${escapeHtml(m.unidad)})</option>`)
-      .join("");
-  if (materiales.some((m) => m.id === valorPrevio)) {
-    selectCompraMateria.value = valorPrevio;
-  }
+      .join("")
+  );
+}
+
+// Refresca las opciones de los <select> de elemento en las líneas de
+// compra ya abiertas, sin perder lo que ya estaba elegido en cada una.
+function refrescarSelectsLineasCompra() {
+  document.querySelectorAll(".linea-elemento").forEach((select) => {
+    const valorPrevio = select.value;
+    select.innerHTML = opcionesElementos();
+    if (materialesCache.some((m) => m.id === valorPrevio)) select.value = valorPrevio;
+  });
 }
 
 onSnapshot(query(materiasPrimasRef, orderBy("nombre")), (snapshot) => {
   materialesCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderTablaMateriales(materialesCache);
-  renderSelectCompraMateria(materialesCache);
+  refrescarSelectsLineasCompra();
   renderTablaCompras();
 });
 
@@ -308,58 +314,129 @@ formNuevoProveedor.addEventListener("submit", async (e) => {
 });
 
 // =====================================================================
-// Compras
+// Compras (una compra puede traer varios elementos)
 // =====================================================================
 
 const tablaComprasBody = document.getElementById("tabla-compras-body");
 const modalCompra = document.getElementById("modal-compra");
-const formCompra = document.getElementById("form-compra");
 const errorCompra = document.getElementById("error-compra");
-const inputCantidad = document.getElementById("compra-cantidad");
-const inputPrecioUnitario = document.getElementById("compra-precio-unitario");
 const selectTipoFactura = document.getElementById("compra-tipo-factura");
+const lineasCompraContenedor = document.getElementById("compra-lineas");
+const btnAgregarLineaCompra = document.getElementById("btn-agregar-linea-compra");
 const netoCalculadoEl = document.getElementById("compra-neto-calculado");
 const ivaCalculadoEl = document.getElementById("compra-iva-calculado");
 const totalCalculadoEl = document.getElementById("compra-total-calculado");
 const tituloModalCompra = document.getElementById("titulo-modal-compra");
 const btnGuardarCompra = document.getElementById("btn-guardar-compra");
 
-let editandoCompra = null; // { id, materiaId, cantidad } de la compra original, o null si es alta
+let editandoCompraId = null; // id de la compra original, o null si es alta
+let itemsOriginalesEdicion = []; // items de la compra tal cual estaba antes de editar
 
-function renderTablaCompras() {
-  if (comprasCache.length === 0) {
-    tablaComprasBody.innerHTML =
-      '<tr><td colspan="7" class="fila-vacia">Todavía no hay compras registradas.</td></tr>';
-    return;
+// ---- Resumen "Neto / IVA / Total" a partir de un total ya conocido ----
+// (a diferencia de calcularDesglose de otras pantallas, acá el total ya
+// viene calculado por línea — cantidad * monto, o el monto directo si es
+// "precio total" — así que no hace falta cantidad*precioUnitario de nuevo)
+function desgloseDesdeTotal(totalIngresado, tipoFactura) {
+  if (tipoFactura === "sin_factura") {
+    return { totalNeto: totalIngresado, ivaTotal: 0, totalConIva: totalIngresado };
   }
-  tablaComprasBody.innerHTML = comprasCache
-    .map((c) => {
-      const fecha = c.fecha ? formatoFecha.format(c.fecha.toDate()) : "—";
-      return `
-      <tr>
-        <td>${fecha}</td>
-        <td>${escapeHtml(nombreMaterial(c.materiaId))}</td>
-        <td>${escapeHtml(nombreProveedor(c.proveedorId))}</td>
-        <td class="col-numero">${formatoNumero.format(c.cantidad)}</td>
-        <td class="col-numero">${formatoMoneda.format(c.precioTotalConIva)}</td>
-        <td class="col-numero">${formatoMoneda.format(c.ivaTotal)}</td>
-        <td class="col-acciones">
-          <button type="button" class="boton-accion-fila" data-editar-compra="${c.id}">Editar</button>
-          <button type="button" class="boton-accion-fila peligro" data-eliminar-compra="${c.id}">Eliminar</button>
-        </td>
-      </tr>`;
-    })
-    .join("");
+  if (tipoFactura === "con_iva_incluido") {
+    const totalNeto = totalIngresado / (1 + TASA_IVA);
+    const ivaTotal = totalIngresado - totalNeto;
+    return { totalNeto, ivaTotal, totalConIva: totalIngresado };
+  }
+  // con_iva_no_incluido
+  const ivaTotal = totalIngresado * TASA_IVA;
+  return { totalNeto: totalIngresado, ivaTotal, totalConIva: totalIngresado + ivaTotal };
 }
 
-onSnapshot(query(movimientosCompraRef, orderBy("fecha", "desc"), limit(10)), (snapshot) => {
-  comprasCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-  renderTablaCompras();
+function crearLineaCompra(item = {}) {
+  const fila = document.createElement("div");
+  fila.className = "linea-compra";
+  fila.innerHTML = `
+    <select class="linea-elemento">${opcionesElementos()}</select>
+    <input type="number" class="linea-cantidad" min="0.0001" step="any" placeholder="Cantidad" value="${item.cantidad ?? ""}" />
+    <select class="linea-modo-precio">
+      <option value="unitario">Precio unitario</option>
+      <option value="total">Precio total</option>
+    </select>
+    <input type="number" class="linea-monto" min="0" step="any" placeholder="Monto" value="${item.monto ?? ""}" />
+    <button type="button" class="boton-quitar-fila" title="Quitar">×</button>
+  `;
+  if (item.materiaId) fila.querySelector(".linea-elemento").value = item.materiaId;
+  if (item.modoPrecio) fila.querySelector(".linea-modo-precio").value = item.modoPrecio;
+
+  fila.querySelector(".boton-quitar-fila").addEventListener("click", () => {
+    fila.remove();
+    actualizarDesgloseCalculado();
+  });
+  fila.querySelectorAll("input, select").forEach((el) => el.addEventListener("input", actualizarDesgloseCalculado));
+  fila.querySelectorAll("select").forEach((el) => el.addEventListener("change", actualizarDesgloseCalculado));
+
+  return fila;
+}
+
+btnAgregarLineaCompra.addEventListener("click", () => {
+  lineasCompraContenedor.appendChild(crearLineaCompra());
 });
 
+// Lee todas las líneas del formulario y devuelve un array de items
+// validados, o null si falta algo (y muestra el error correspondiente).
+function leerLineasCompra() {
+  const filas = Array.from(lineasCompraContenedor.querySelectorAll(".linea-compra"));
+  if (filas.length === 0) {
+    errorCompra.textContent = "Agregá al menos un elemento a la compra.";
+    errorCompra.hidden = false;
+    return null;
+  }
+  const items = [];
+  for (const fila of filas) {
+    const materiaId = fila.querySelector(".linea-elemento").value;
+    const cantidad = parseFloat(fila.querySelector(".linea-cantidad").value);
+    const modoPrecio = fila.querySelector(".linea-modo-precio").value;
+    const monto = parseFloat(fila.querySelector(".linea-monto").value);
+    if (!materiaId || !(cantidad > 0) || !(monto >= 0)) {
+      errorCompra.textContent = "Completá elemento, cantidad y monto en cada línea (o quitá la línea).";
+      errorCompra.hidden = false;
+      return null;
+    }
+    const montoTotalLinea = modoPrecio === "total" ? monto : cantidad * monto;
+    items.push({ materiaId, cantidad, modoPrecio, monto, montoTotalLinea });
+  }
+  return items;
+}
+
+function actualizarDesgloseCalculado() {
+  errorCompra.hidden = true;
+  const filas = Array.from(lineasCompraContenedor.querySelectorAll(".linea-compra"));
+  let totalNeto = 0;
+  let ivaTotal = 0;
+  let totalConIva = 0;
+
+  filas.forEach((fila) => {
+    const cantidad = parseFloat(fila.querySelector(".linea-cantidad").value) || 0;
+    const modoPrecio = fila.querySelector(".linea-modo-precio").value;
+    const monto = parseFloat(fila.querySelector(".linea-monto").value) || 0;
+    const montoTotalLinea = modoPrecio === "total" ? monto : cantidad * monto;
+    const d = desgloseDesdeTotal(montoTotalLinea, selectTipoFactura.value);
+    totalNeto += d.totalNeto;
+    ivaTotal += d.ivaTotal;
+    totalConIva += d.totalConIva;
+  });
+
+  netoCalculadoEl.textContent = formatoMoneda.format(totalNeto);
+  ivaCalculadoEl.textContent = formatoMoneda.format(ivaTotal);
+  totalCalculadoEl.textContent = formatoMoneda.format(totalConIva);
+}
+selectTipoFactura.addEventListener("change", actualizarDesgloseCalculado);
+
 function resetearFormCompra() {
-  editandoCompra = null;
-  formCompra.reset();
+  editandoCompraId = null;
+  itemsOriginalesEdicion = [];
+  selectCompraProveedor.value = "";
+  selectTipoFactura.value = "con_iva_no_incluido";
+  lineasCompraContenedor.innerHTML = "";
+  lineasCompraContenedor.appendChild(crearLineaCompra());
   errorCompra.hidden = true;
   tituloModalCompra.textContent = "Registrar compra";
   btnGuardarCompra.textContent = "Registrar compra";
@@ -379,6 +456,42 @@ document.getElementById("btn-abrir-compra").addEventListener("click", () => {
   abrirModal(modalCompra);
 });
 
+// ---- Resumen de elementos comprados, para la tabla y las alertas ----
+function resumenItemsCompra(items) {
+  return items.map((it) => `${nombreMaterial(it.materiaId)} (${formatoNumero.format(it.cantidad)})`).join(", ");
+}
+
+function renderTablaCompras() {
+  if (comprasCache.length === 0) {
+    tablaComprasBody.innerHTML =
+      '<tr><td colspan="6" class="fila-vacia">Todavía no hay compras registradas.</td></tr>';
+    return;
+  }
+  tablaComprasBody.innerHTML = comprasCache
+    .map((c) => {
+      const fecha = c.fecha ? formatoFecha.format(c.fecha.toDate()) : "—";
+      const resumen = resumenItemsCompra(c.items || []);
+      return `
+      <tr>
+        <td>${fecha}</td>
+        <td><span class="receta-resumen" title="${escapeHtml(resumen)}">${escapeHtml(resumen)}</span></td>
+        <td>${escapeHtml(nombreProveedor(c.proveedorId))}</td>
+        <td class="col-numero">${formatoMoneda.format(c.precioTotalConIva)}</td>
+        <td class="col-numero">${formatoMoneda.format(c.ivaTotal)}</td>
+        <td class="col-acciones">
+          <button type="button" class="boton-accion-fila" data-editar-compra="${c.id}">Editar</button>
+          <button type="button" class="boton-accion-fila peligro" data-eliminar-compra="${c.id}">Eliminar</button>
+        </td>
+      </tr>`;
+    })
+    .join("");
+}
+
+onSnapshot(query(movimientosCompraRef, orderBy("fecha", "desc"), limit(10)), (snapshot) => {
+  comprasCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderTablaCompras();
+});
+
 tablaComprasBody.addEventListener("click", (e) => {
   const idEditar = e.target.dataset.editarCompra;
   const idEliminar = e.target.dataset.eliminarCompra;
@@ -386,12 +499,12 @@ tablaComprasBody.addEventListener("click", (e) => {
   if (idEditar) {
     const compra = comprasCache.find((c) => c.id === idEditar);
     if (!compra) return;
-    editandoCompra = { id: compra.id, materiaId: compra.materiaId, cantidad: compra.cantidad };
-    selectCompraMateria.value = compra.materiaId;
+    editandoCompraId = compra.id;
+    itemsOriginalesEdicion = compra.items || [];
     selectCompraProveedor.value = compra.proveedorId;
-    inputCantidad.value = compra.cantidad;
-    inputPrecioUnitario.value = compra.precioUnitario;
     selectTipoFactura.value = compra.tipoFactura || "con_iva_no_incluido";
+    lineasCompraContenedor.innerHTML = "";
+    itemsOriginalesEdicion.forEach((it) => lineasCompraContenedor.appendChild(crearLineaCompra(it)));
     errorCompra.hidden = true;
     tituloModalCompra.textContent = "Editar compra";
     btnGuardarCompra.textContent = "Guardar cambios";
@@ -402,13 +515,13 @@ tablaComprasBody.addEventListener("click", (e) => {
   if (idEliminar) {
     const compra = comprasCache.find((c) => c.id === idEliminar);
     if (!compra) return;
-    if (!confirm(`¿Eliminar esta compra de "${nombreMaterial(compra.materiaId)}"? Se descuenta del stock.`))
+    if (!confirm(`¿Eliminar esta compra (${resumenItemsCompra(compra.items || [])})? Se descuenta del stock.`))
       return;
     eliminarCompra(compra).catch((error) => {
       if (error.code === "STOCK_NEGATIVO") {
         alert(
           `No se puede eliminar: el stock de "${nombreMaterial(
-            compra.materiaId
+            error.materiaId
           )}" ya se usó (quedaría en negativo). Revisá las producciones o compras posteriores primero.`
         );
       } else {
@@ -419,148 +532,148 @@ tablaComprasBody.addEventListener("click", (e) => {
   }
 });
 
-function calcularDesglose(cantidad, precioUnitario, tipoFactura) {
-  const totalIngresado = cantidad * precioUnitario;
-
-  if (tipoFactura === "sin_factura") {
-    return { totalNeto: totalIngresado, ivaTotal: 0, totalConIva: totalIngresado };
-  }
-  if (tipoFactura === "con_iva_incluido") {
-    const totalNeto = totalIngresado / (1 + TASA_IVA);
-    const ivaTotal = totalIngresado - totalNeto;
-    return { totalNeto, ivaTotal, totalConIva: totalIngresado };
-  }
-  // con_iva_no_incluido
-  const ivaTotal = totalIngresado * TASA_IVA;
-  return { totalNeto: totalIngresado, ivaTotal, totalConIva: totalIngresado + ivaTotal };
-}
-
-function actualizarDesgloseCalculado() {
-  const cantidad = parseFloat(inputCantidad.value) || 0;
-  const precioUnitario = parseFloat(inputPrecioUnitario.value) || 0;
-  const { totalNeto, ivaTotal, totalConIva } = calcularDesglose(cantidad, precioUnitario, selectTipoFactura.value);
-  netoCalculadoEl.textContent = formatoMoneda.format(totalNeto);
-  ivaCalculadoEl.textContent = formatoMoneda.format(ivaTotal);
-  totalCalculadoEl.textContent = formatoMoneda.format(totalConIva);
-}
-inputCantidad.addEventListener("input", actualizarDesgloseCalculado);
-inputPrecioUnitario.addEventListener("input", actualizarDesgloseCalculado);
-selectTipoFactura.addEventListener("change", actualizarDesgloseCalculado);
-
-formCompra.addEventListener("submit", async (e) => {
-  e.preventDefault();
+btnGuardarCompra.addEventListener("click", async () => {
   errorCompra.hidden = true;
 
-  const materiaId = selectCompraMateria.value;
   const proveedorId = selectCompraProveedor.value;
-  const cantidad = parseFloat(inputCantidad.value);
-  const precioUnitario = parseFloat(inputPrecioUnitario.value);
   const tipoFactura = selectTipoFactura.value;
+  if (!proveedorId) {
+    errorCompra.textContent = "Elegí un proveedor.";
+    errorCompra.hidden = false;
+    return;
+  }
 
-  if (!materiaId || !proveedorId || !(cantidad > 0) || !(precioUnitario >= 0)) return;
+  const items = leerLineasCompra();
+  if (!items) return;
 
-  deshabilitarForm(formCompra, true);
+  btnGuardarCompra.disabled = true;
   try {
-    if (editandoCompra) {
-      await actualizarCompra(editandoCompra, { materiaId, proveedorId, cantidad, precioUnitario, tipoFactura });
+    if (editandoCompraId) {
+      await actualizarCompra(editandoCompraId, itemsOriginalesEdicion, { proveedorId, tipoFactura, items });
     } else {
-      await registrarCompra({ materiaId, proveedorId, cantidad, precioUnitario, tipoFactura });
+      await registrarCompra({ proveedorId, tipoFactura, items });
     }
     cerrarModal(modalCompra);
   } catch (error) {
     if (error.code === "STOCK_NEGATIVO") {
-      errorCompra.textContent =
-        "Ese cambio dejaría el stock del elemento en negativo (ya se usó en otra producción o movimiento). Ajustá primero eso.";
+      errorCompra.textContent = `Ese cambio dejaría el stock de "${nombreMaterial(
+        error.materiaId
+      )}" en negativo (ya se usó en otra producción o movimiento). Ajustá primero eso.`;
     } else {
       console.error(error);
       errorCompra.textContent = "No se pudo guardar la compra. Probá de nuevo.";
     }
     errorCompra.hidden = false;
   } finally {
-    deshabilitarForm(formCompra, false);
+    btnGuardarCompra.disabled = false;
   }
 });
 
-async function registrarCompra({ materiaId, proveedorId, cantidad, precioUnitario, tipoFactura }) {
-  const materiaRef = doc(materiasPrimasRef, materiaId);
-  const { totalNeto, ivaTotal, totalConIva } = calcularDesglose(cantidad, precioUnitario, tipoFactura);
+// Suma cantidades por elemento (si el mismo elemento aparece en más de
+// una línea de la misma compra) para poder hacer una sola lectura/
+// escritura de stock por elemento dentro de la transacción.
+function agruparCantidadesPorElemento(items) {
+  const mapa = {};
+  items.forEach((it) => {
+    mapa[it.materiaId] = (mapa[it.materiaId] || 0) + it.cantidad;
+  });
+  return mapa;
+}
+
+function calcularTotalesCompra(items, tipoFactura) {
+  let totalNeto = 0;
+  let ivaTotal = 0;
+  let totalConIva = 0;
+  items.forEach((it) => {
+    const d = desgloseDesdeTotal(it.montoTotalLinea, tipoFactura);
+    totalNeto += d.totalNeto;
+    ivaTotal += d.ivaTotal;
+    totalConIva += d.totalConIva;
+  });
+  return {
+    precioTotalNeto: round2(totalNeto),
+    ivaTotal: round2(ivaTotal),
+    precioTotalConIva: round2(totalConIva)
+  };
+}
+
+async function registrarCompra({ proveedorId, tipoFactura, items }) {
+  const cantidadesPorElemento = agruparCantidadesPorElemento(items);
+  const totales = calcularTotalesCompra(items, tipoFactura);
 
   await runTransaction(db, async (tx) => {
-    const materiaSnap = await tx.get(materiaRef);
-    if (!materiaSnap.exists()) {
-      throw new Error("El elemento ya no existe.");
+    const lecturas = [];
+    for (const materiaId of Object.keys(cantidadesPorElemento)) {
+      const ref = doc(materiasPrimasRef, materiaId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error("Un elemento de la compra ya no existe.");
+      lecturas.push({ ref, materiaId, stockActual: snap.data().stockActual || 0 });
     }
-    const stockActual = materiaSnap.data().stockActual || 0;
 
-    tx.update(materiaRef, {
-      stockActual: stockActual + cantidad,
-      actualizadoEn: serverTimestamp()
+    lecturas.forEach(({ ref, materiaId, stockActual }) => {
+      tx.update(ref, {
+        stockActual: stockActual + cantidadesPorElemento[materiaId],
+        actualizadoEn: serverTimestamp()
+      });
     });
 
     tx.set(doc(movimientosCompraRef), {
-      materiaId,
       proveedorId,
-      cantidad,
-      precioUnitario,
       tipoFactura,
       tieneFactura: tipoFactura !== "sin_factura",
-      precioTotalNeto: round2(totalNeto),
-      ivaTotal: round2(ivaTotal),
-      precioTotalConIva: round2(totalConIva),
+      items: items.map((it) => ({
+        materiaId: it.materiaId,
+        cantidad: it.cantidad,
+        modoPrecio: it.modoPrecio,
+        monto: it.monto
+      })),
+      ...totales,
       fecha: serverTimestamp()
     });
   });
 }
 
-async function actualizarCompra(original, { materiaId, proveedorId, cantidad, precioUnitario, tipoFactura }) {
-  const compraRef = doc(movimientosCompraRef, original.id);
-  const { totalNeto, ivaTotal, totalConIva } = calcularDesglose(cantidad, precioUnitario, tipoFactura);
-  const mismoElemento = original.materiaId === materiaId;
+async function actualizarCompra(compraId, itemsOriginales, { proveedorId, tipoFactura, items }) {
+  const compraRef = doc(movimientosCompraRef, compraId);
+  const totales = calcularTotalesCompra(items, tipoFactura);
+
+  const cantidadesViejas = agruparCantidadesPorElemento(itemsOriginales);
+  const cantidadesNuevas = agruparCantidadesPorElemento(items);
+  const idsAfectados = new Set([...Object.keys(cantidadesViejas), ...Object.keys(cantidadesNuevas)]);
 
   await runTransaction(db, async (tx) => {
-    const materiaRefOriginal = doc(materiasPrimasRef, original.materiaId);
-    const snapOriginal = await tx.get(materiaRefOriginal);
-    if (!snapOriginal.exists()) {
-      throw new Error("El elemento original de esta compra ya no existe.");
-    }
-
-    if (mismoElemento) {
-      const stockActual = snapOriginal.data().stockActual || 0;
-      const nuevoStock = stockActual - original.cantidad + cantidad;
+    const lecturas = [];
+    for (const materiaId of idsAfectados) {
+      const ref = doc(materiasPrimasRef, materiaId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) continue; // el elemento pudo haberse eliminado; se ignora su ajuste
+      const stockActual = snap.data().stockActual || 0;
+      const delta = (cantidadesNuevas[materiaId] || 0) - (cantidadesViejas[materiaId] || 0);
+      const nuevoStock = stockActual - delta;
       if (nuevoStock < 0) {
         const err = new Error("Stock negativo");
         err.code = "STOCK_NEGATIVO";
+        err.materiaId = materiaId;
         throw err;
       }
-      tx.update(materiaRefOriginal, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
-    } else {
-      const materiaRefNueva = doc(materiasPrimasRef, materiaId);
-      const snapNueva = await tx.get(materiaRefNueva);
-      if (!snapNueva.exists()) {
-        throw new Error("El elemento nuevo ya no existe.");
-      }
-      const stockOriginal = snapOriginal.data().stockActual || 0;
-      const nuevoStockOriginal = stockOriginal - original.cantidad;
-      if (nuevoStockOriginal < 0) {
-        const err = new Error("Stock negativo");
-        err.code = "STOCK_NEGATIVO";
-        throw err;
-      }
-      const stockNueva = snapNueva.data().stockActual || 0;
-      tx.update(materiaRefOriginal, { stockActual: nuevoStockOriginal, actualizadoEn: serverTimestamp() });
-      tx.update(materiaRefNueva, { stockActual: stockNueva + cantidad, actualizadoEn: serverTimestamp() });
+      lecturas.push({ ref, nuevoStock });
     }
 
+    lecturas.forEach(({ ref, nuevoStock }) => {
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    });
+
     tx.update(compraRef, {
-      materiaId,
       proveedorId,
-      cantidad,
-      precioUnitario,
       tipoFactura,
       tieneFactura: tipoFactura !== "sin_factura",
-      precioTotalNeto: round2(totalNeto),
-      ivaTotal: round2(ivaTotal),
-      precioTotalConIva: round2(totalConIva),
+      items: items.map((it) => ({
+        materiaId: it.materiaId,
+        cantidad: it.cantidad,
+        modoPrecio: it.modoPrecio,
+        monto: it.monto
+      })),
+      ...totales,
       actualizadoEn: serverTimestamp()
     });
   });
@@ -568,20 +681,27 @@ async function actualizarCompra(original, { materiaId, proveedorId, cantidad, pr
 
 async function eliminarCompra(compra) {
   const compraRef = doc(movimientosCompraRef, compra.id);
-  const materiaRef = doc(materiasPrimasRef, compra.materiaId);
+  const cantidadesPorElemento = agruparCantidadesPorElemento(compra.items || []);
 
   await runTransaction(db, async (tx) => {
-    const materiaSnap = await tx.get(materiaRef);
-    if (materiaSnap.exists()) {
-      const stockActual = materiaSnap.data().stockActual || 0;
-      const nuevoStock = stockActual - compra.cantidad;
+    const lecturas = [];
+    for (const materiaId of Object.keys(cantidadesPorElemento)) {
+      const ref = doc(materiasPrimasRef, materiaId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) continue;
+      const stockActual = snap.data().stockActual || 0;
+      const nuevoStock = stockActual - cantidadesPorElemento[materiaId];
       if (nuevoStock < 0) {
         const err = new Error("Stock negativo");
         err.code = "STOCK_NEGATIVO";
+        err.materiaId = materiaId;
         throw err;
       }
-      tx.update(materiaRef, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+      lecturas.push({ ref, nuevoStock });
     }
+    lecturas.forEach(({ ref, nuevoStock }) => {
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    });
     tx.delete(compraRef);
   });
 }

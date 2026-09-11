@@ -47,7 +47,8 @@
       <p class="subtitulo">Factory Holding S.A.S.</p>
 
       <ul class="app-nav">
-        <li><button class="activo">Stock y Producción</button></li>
+        <li><button class="activo" id="nav-stock-produccion">Stock y Producción</button></li>
+        <li><button id="nav-analisis-produccion">Análisis de producción</button></li>
         <li><button disabled title="Próximamente">Ventas y Presupuestos</button></li>
         <li><button disabled title="Próximamente">Egresos y Balance</button></li>
       </ul>
@@ -58,7 +59,7 @@
       </div>
     </aside>
 
-    <main class="app-contenido">
+    <main class="app-contenido" id="panel-stock-produccion">
       <div class="encabezado-seccion">
         <div>
           <h1>Materias primas</h1>
@@ -99,16 +100,15 @@
         <thead>
           <tr>
             <th>Fecha</th>
-            <th>Elemento</th>
+            <th>Elementos</th>
             <th>Proveedor</th>
-            <th class="col-numero">Cantidad</th>
             <th class="col-numero">Total c/IVA</th>
             <th class="col-numero">IVA</th>
             <th class="col-acciones"></th>
           </tr>
         </thead>
         <tbody id="tabla-compras-body">
-          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
+          <tr><td colspan="6" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
 
@@ -177,6 +177,50 @@
         </tbody>
       </table>
     </main>
+
+    <main class="app-contenido" id="panel-analisis-produccion" hidden>
+      <div class="encabezado-seccion">
+        <div>
+          <h1>Análisis de producción</h1>
+          <p class="ayuda">
+            Cuánto se podría producir hoy con el stock actual, y qué
+            consume una cantidad puntual de cualquier producto.
+          </p>
+        </div>
+      </div>
+
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Receta (consumo por unidad)</th>
+            <th class="col-numero">Producible hoy</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-analisis-body">
+          <tr><td colspan="3" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="subtitulo-seccion">Calculadora rápida</h2>
+      <p class="ayuda">Elegí un producto y una cantidad para ver el consumo exacto, sin registrar nada.</p>
+      <div class="calculadora-analisis">
+        <label>
+          Producto
+          <select id="analisis-producto">
+            <option value="" disabled selected>Elegir producto...</option>
+          </select>
+        </label>
+        <label>
+          Cantidad
+          <input type="number" id="analisis-cantidad" min="0.01" step="any" />
+        </label>
+      </div>
+      <div id="analisis-consumo-preview" class="consumo-preview" hidden>
+        <p class="consumo-preview-titulo">Consumo necesario:</p>
+        <div id="analisis-consumo-filas"></div>
+      </div>
+    </main>
   </div>
 
   <!-- Modal: nuevo/editar elemento -->
@@ -230,27 +274,13 @@
 
   <!-- Modal: registrar/editar compra -->
   <div id="modal-compra" class="modal-overlay" hidden>
-    <form id="form-compra" class="modal-tarjeta">
+    <div class="modal-tarjeta modal-tarjeta-ancha">
       <h3 id="titulo-modal-compra">Registrar compra</h3>
-      <label>
-        Elemento
-        <select id="compra-materia" required>
-          <option value="" disabled selected>Elegir elemento...</option>
-        </select>
-      </label>
       <label>
         Proveedor
         <select id="compra-proveedor" required>
           <option value="" disabled selected>Elegir proveedor...</option>
         </select>
-      </label>
-      <label>
-        Cantidad
-        <input type="number" id="compra-cantidad" min="0.01" step="any" required />
-      </label>
-      <label>
-        Precio unitario
-        <input type="number" id="compra-precio-unitario" min="0" step="any" required />
       </label>
       <label>
         Facturación
@@ -260,6 +290,13 @@
           <option value="sin_factura">Sin factura (no aplica IVA)</option>
         </select>
       </label>
+
+      <p class="ayuda-modal">Elementos comprados</p>
+      <div id="compra-lineas"></div>
+      <button type="button" id="btn-agregar-linea-compra" class="boton-secundario boton-chico boton-agregar-fila">
+        + Agregar elemento a la compra
+      </button>
+
       <div class="desglose-calculado">
         <p><span>Neto</span><span id="compra-neto-calculado">$0</span></p>
         <p><span>IVA</span><span id="compra-iva-calculado">$0</span></p>
@@ -268,9 +305,9 @@
       <p class="error-form" id="error-compra" hidden></p>
       <div class="modal-acciones">
         <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-compra">Cancelar</button>
-        <button type="submit" id="btn-guardar-compra" class="boton-primario boton-chico">Registrar compra</button>
+        <button type="button" id="btn-guardar-compra" class="boton-primario boton-chico">Registrar compra</button>
       </div>
-    </form>
+    </div>
   </div>
 
   <!-- Modal: nuevo/editar producto -->
@@ -354,6 +391,38 @@
     </form>
   </div>
 
+  <!-- Modal: editar producción -->
+  <div id="modal-editar-produccion" class="modal-overlay" hidden>
+    <form id="form-editar-produccion" class="modal-tarjeta modal-tarjeta-ancha">
+      <h3>Editar producción</h3>
+      <label id="label-editar-produccion-producto">
+        Producto
+        <select id="editar-produccion-producto" required>
+          <option value="" disabled selected>Elegir producto...</option>
+        </select>
+      </label>
+      <p class="ayuda-modal" id="editar-produccion-producto-fijo" hidden></p>
+      <label>
+        Cantidad teórica
+        <input type="number" id="editar-produccion-teorica" min="0.01" step="any" required />
+      </label>
+      <label id="label-editar-produccion-real" hidden>
+        Cantidad real confirmada
+        <input type="number" id="editar-produccion-real" min="0" step="any" />
+      </label>
+      <p class="total-calculado" id="editar-produccion-merma" hidden></p>
+      <div id="editar-produccion-consumo-preview" class="consumo-preview" hidden>
+        <p class="consumo-preview-titulo">Consumo de elementos con estos valores:</p>
+        <div id="editar-produccion-consumo-filas"></div>
+      </div>
+      <p class="error-form" id="error-editar-produccion" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-editar-produccion">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Modal: hecho con descarte -->
   <div id="modal-descarte" class="modal-overlay" hidden>
     <form id="form-descarte" class="modal-tarjeta">
@@ -383,8 +452,10 @@
 
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/navegacion.js"></script>
   <script type="module" src="js/materias-primas.js"></script>
   <script type="module" src="js/productos.js"></script>
   <script type="module" src="js/produccion.js"></script>
+  <script type="module" src="js/analisis-produccion.js"></script>
 </body>
 </html>

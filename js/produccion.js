@@ -133,6 +133,7 @@ function renderTablaProduccion() {
         <td class="col-numero">${pendiente ? "—" : formatoNumero.format(f.merma)}</td>
         <td class="col-acciones">
           ${pendiente ? `<button type="button" class="boton-accion-fila" data-confirmar-produccion="${f.id}">Confirmar</button>` : ""}
+          <button type="button" class="boton-accion-fila" data-editar-produccion="${f.id}">Editar</button>
         </td>
       </tr>`;
     })
@@ -362,6 +363,201 @@ async function confirmarProduccion(produccion, cantidadReal) {
       cantidadReal,
       merma,
       fechaConfirmacion: serverTimestamp()
+    });
+  });
+}
+
+// =====================================================================
+// Modal: editar producción
+// =====================================================================
+
+const modalEditarProduccion = document.getElementById("modal-editar-produccion");
+const formEditarProduccion = document.getElementById("form-editar-produccion");
+const errorEditarProduccion = document.getElementById("error-editar-produccion");
+const labelEditarProduccionProducto = document.getElementById("label-editar-produccion-producto");
+const selectEditarProduccionProducto = document.getElementById("editar-produccion-producto");
+const textoEditarProduccionProductoFijo = document.getElementById("editar-produccion-producto-fijo");
+const inputEditarProduccionTeorica = document.getElementById("editar-produccion-teorica");
+const labelEditarProduccionReal = document.getElementById("label-editar-produccion-real");
+const inputEditarProduccionReal = document.getElementById("editar-produccion-real");
+const mermaEditarProduccionEl = document.getElementById("editar-produccion-merma");
+const previewEditarConsumo = document.getElementById("editar-produccion-consumo-preview");
+const previewEditarConsumoFilas = document.getElementById("editar-produccion-consumo-filas");
+
+let produccionAEditar = null;
+
+tablaProduccionBody.addEventListener("click", (e) => {
+  const id = e.target.dataset.editarProduccion;
+  if (!id) return;
+  const produccion = produccionCache.find((p) => p.id === id);
+  if (!produccion) return;
+
+  produccionAEditar = produccion;
+  const esConfirmada = produccion.estado === "confirmada";
+
+  // El producto solo se puede cambiar si todavía no se confirmó: una vez
+  // confirmada, el stock del producto ya se movió con la receta original.
+  if (esConfirmada) {
+    labelEditarProduccionProducto.hidden = true;
+    textoEditarProduccionProductoFijo.hidden = false;
+    textoEditarProduccionProductoFijo.textContent = `Producto: ${nombreProducto(produccion.productoId)} (no se puede cambiar en una producción ya confirmada)`;
+  } else {
+    labelEditarProduccionProducto.hidden = false;
+    textoEditarProduccionProductoFijo.hidden = true;
+    renderSelectEditarProducto();
+    selectEditarProduccionProducto.value = produccion.productoId;
+  }
+
+  inputEditarProduccionTeorica.value = produccion.cantidadTeorica;
+  labelEditarProduccionReal.hidden = !esConfirmada;
+  mermaEditarProduccionEl.hidden = !esConfirmada;
+  inputEditarProduccionReal.value = esConfirmada ? produccion.cantidadReal : "";
+
+  errorEditarProduccion.hidden = true;
+  actualizarPreviewEditarConsumo();
+  abrirModal(modalEditarProduccion);
+});
+
+function renderSelectEditarProducto() {
+  const productosConReceta = productosCache.filter((p) => p.receta && p.receta.length > 0);
+  selectEditarProduccionProducto.innerHTML =
+    '<option value="" disabled selected>Elegir producto...</option>' +
+    productosConReceta.map((p) => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join("");
+}
+
+function productoIdEnEdicion() {
+  return produccionAEditar.estado === "confirmada" ? produccionAEditar.productoId : selectEditarProduccionProducto.value;
+}
+
+function actualizarPreviewEditarConsumo() {
+  if (!produccionAEditar) return;
+  const productoId = productoIdEnEdicion();
+  const cantidad = parseFloat(inputEditarProduccionTeorica.value);
+  if (!productoId || !(cantidad > 0)) {
+    previewEditarConsumo.hidden = true;
+    return;
+  }
+  const consumo = calcularConsumo(productoId, cantidad);
+  previewEditarConsumoFilas.innerHTML = consumo
+    .map(
+      (c) => `
+      <div class="consumo-preview-fila">
+        <span>${escapeHtml(nombreElemento(c.materiaId))}</span>
+        <span>-${formatoNumero.format(c.cantidadDescontada)}</span>
+      </div>`
+    )
+    .join("");
+  previewEditarConsumo.hidden = consumo.length === 0;
+
+  if (produccionAEditar.estado === "confirmada") {
+    const real = parseFloat(inputEditarProduccionReal.value) || 0;
+    mermaEditarProduccionEl.textContent = `Merma: ${formatoNumero.format(cantidad - real)}`;
+  }
+}
+selectEditarProduccionProducto.addEventListener("change", actualizarPreviewEditarConsumo);
+inputEditarProduccionTeorica.addEventListener("input", actualizarPreviewEditarConsumo);
+inputEditarProduccionReal.addEventListener("input", actualizarPreviewEditarConsumo);
+
+formEditarProduccion.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errorEditarProduccion.hidden = true;
+
+  const esConfirmada = produccionAEditar.estado === "confirmada";
+  const productoId = productoIdEnEdicion();
+  const cantidadTeorica = parseFloat(inputEditarProduccionTeorica.value);
+  const cantidadReal = esConfirmada ? parseFloat(inputEditarProduccionReal.value) : null;
+
+  if (!productoId || !(cantidadTeorica > 0)) return;
+  if (esConfirmada && !(cantidadReal >= 0)) return;
+
+  deshabilitarForm(formEditarProduccion, true);
+  try {
+    await actualizarProduccionExistente(produccionAEditar, { productoId, cantidadTeorica, cantidadReal });
+    cerrarModal(modalEditarProduccion);
+  } catch (error) {
+    if (error.code === "STOCK_NEGATIVO") {
+      errorEditarProduccion.textContent = `Ese cambio dejaría el stock de "${nombreElemento(
+        error.materiaId
+      )}" en negativo. Revisá compras o producciones posteriores primero.`;
+    } else {
+      console.error(error);
+      errorEditarProduccion.textContent = "No se pudo guardar el cambio. Probá de nuevo.";
+    }
+    errorEditarProduccion.hidden = false;
+  } finally {
+    deshabilitarForm(formEditarProduccion, false);
+  }
+});
+
+// Recalcula el consumo de elementos desde cero con los valores nuevos y
+// ajusta el stock por la diferencia contra lo que ya se había
+// descontado originalmente (consumoMateriales de la producción tal como
+// quedó guardada). Si además está confirmada, también ajusta el stock
+// del producto por la diferencia de cantidad real.
+async function actualizarProduccionExistente(original, { productoId, cantidadTeorica, cantidadReal }) {
+  const produccionRef = doc(movimientosProduccionRef, original.id);
+  const nuevoConsumo = calcularConsumo(productoId, cantidadTeorica);
+  const consumoViejoPorElemento = {};
+  (original.consumoMateriales || []).forEach((c) => {
+    consumoViejoPorElemento[c.materiaId] = (consumoViejoPorElemento[c.materiaId] || 0) + c.cantidadDescontada;
+  });
+  const consumoNuevoPorElemento = {};
+  nuevoConsumo.forEach((c) => {
+    consumoNuevoPorElemento[c.materiaId] = (consumoNuevoPorElemento[c.materiaId] || 0) + c.cantidadDescontada;
+  });
+  const idsAfectados = new Set([...Object.keys(consumoViejoPorElemento), ...Object.keys(consumoNuevoPorElemento)]);
+
+  const esConfirmada = original.estado === "confirmada";
+  const merma = esConfirmada ? cantidadTeorica - cantidadReal : null;
+
+  await runTransaction(db, async (tx) => {
+    const lecturasElementos = [];
+    for (const materiaId of idsAfectados) {
+      const ref = doc(materiasPrimasRef, materiaId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) continue;
+      const stockActual = snap.data().stockActual || 0;
+      const delta = (consumoNuevoPorElemento[materiaId] || 0) - (consumoViejoPorElemento[materiaId] || 0);
+      const nuevoStock = stockActual - delta;
+      if (nuevoStock < 0) {
+        const err = new Error("Stock negativo");
+        err.code = "STOCK_NEGATIVO";
+        err.materiaId = materiaId;
+        throw err;
+      }
+      lecturasElementos.push({ ref, nuevoStock });
+    }
+
+    let productoRef = null;
+    let nuevoStockProducto = null;
+    if (esConfirmada) {
+      productoRef = doc(productosRef, original.productoId);
+      const productoSnap = await tx.get(productoRef);
+      if (!productoSnap.exists()) throw new Error("El producto ya no existe.");
+      const stockProductoActual = productoSnap.data().stockActual || 0;
+      const deltaReal = cantidadReal - original.cantidadReal;
+      nuevoStockProducto = stockProductoActual + deltaReal;
+      if (nuevoStockProducto < 0) {
+        const err = new Error("Stock negativo");
+        err.code = "STOCK_NEGATIVO";
+        err.materiaId = original.productoId;
+        throw err;
+      }
+    }
+
+    lecturasElementos.forEach(({ ref, nuevoStock }) => {
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    });
+
+    if (productoRef) {
+      tx.update(productoRef, { stockActual: nuevoStockProducto, actualizadoEn: serverTimestamp() });
+    }
+
+    tx.update(produccionRef, {
+      productoId,
+      cantidadTeorica,
+      consumoMateriales: nuevoConsumo.map((c) => ({ materiaId: c.materiaId, cantidadDescontada: c.cantidadDescontada })),
+      ...(esConfirmada ? { cantidadReal, merma } : {})
     });
   });
 }
