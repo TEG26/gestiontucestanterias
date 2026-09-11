@@ -13,10 +13,14 @@ import {
 
 const materiasPrimasRef = collection(db, "materiasPrimas");
 const movimientosCompraRef = collection(db, "movimientosCompra");
+const proveedoresRef = collection(db, "proveedores");
 
-// Cache local de materiales, para no reconsultar al armar el <select> del
-// modal de compra ni al mostrar nombres en la tabla de compras recientes.
+const TASA_IVA = 0.21; // IVA general Argentina. Avisar si el rubro usa otra tasa.
+
+// Cache local de materiales y proveedores, para no reconsultar al armar
+// los <select> del modal de compra ni al mostrar nombres en las tablas.
 let materialesCache = [];
+let proveedoresCache = [];
 
 const formatoNumero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
 const formatoMoneda = new Intl.NumberFormat("es-AR", {
@@ -69,6 +73,65 @@ onSnapshot(query(materiasPrimasRef, orderBy("nombre")), (snapshot) => {
   materialesCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderTablaMateriales(materialesCache);
   renderSelectCompraMateria(materialesCache);
+  renderTablaCompras();
+});
+
+// ---------- Proveedores ----------
+
+const selectCompraProveedor = document.getElementById("compra-proveedor");
+
+function renderSelectCompraProveedor(proveedores) {
+  const valorPrevio = selectCompraProveedor.value;
+  selectCompraProveedor.innerHTML =
+    '<option value="" disabled selected>Elegir proveedor...</option>' +
+    proveedores.map((p) => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join("");
+  if (proveedores.some((p) => p.id === valorPrevio)) {
+    selectCompraProveedor.value = valorPrevio;
+  }
+}
+
+onSnapshot(query(proveedoresRef, orderBy("nombre")), (snapshot) => {
+  proveedoresCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderSelectCompraProveedor(proveedoresCache);
+  renderTablaCompras();
+});
+
+function nombreProveedor(proveedorId) {
+  const proveedor = proveedoresCache.find((p) => p.id === proveedorId);
+  return proveedor ? proveedor.nombre : "(proveedor eliminado)";
+}
+
+const modalNuevoProveedor = document.getElementById("modal-nuevo-proveedor");
+const formNuevoProveedor = document.getElementById("form-nuevo-proveedor");
+const errorNuevoProveedor = document.getElementById("error-nuevo-proveedor");
+
+document.getElementById("btn-abrir-nuevo-proveedor").addEventListener("click", () => {
+  formNuevoProveedor.reset();
+  errorNuevoProveedor.hidden = true;
+  abrirModal(modalNuevoProveedor);
+});
+
+formNuevoProveedor.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errorNuevoProveedor.hidden = true;
+  const nombre = document.getElementById("nuevo-proveedor-nombre").value.trim();
+  if (!nombre) return;
+
+  deshabilitarForm(formNuevoProveedor, true);
+  try {
+    await addDoc(proveedoresRef, {
+      nombre,
+      activo: true,
+      creadoEn: serverTimestamp()
+    });
+    cerrarModal(modalNuevoProveedor);
+  } catch (error) {
+    console.error(error);
+    errorNuevoProveedor.textContent = "No se pudo crear el proveedor. Probá de nuevo.";
+    errorNuevoProveedor.hidden = false;
+  } finally {
+    deshabilitarForm(formNuevoProveedor, false);
+  }
 });
 
 // ---------- Tabla de compras recientes ----------
@@ -80,30 +143,34 @@ function nombreMaterial(materiaId) {
   return material ? material.nombre : "(material eliminado)";
 }
 
-onSnapshot(
-  query(movimientosCompraRef, orderBy("fecha", "desc"), limit(10)),
-  (snapshot) => {
-    if (snapshot.empty) {
-      tablaComprasBody.innerHTML =
-        '<tr><td colspan="5" class="fila-vacia">Todavía no hay compras registradas.</td></tr>';
-      return;
-    }
-    tablaComprasBody.innerHTML = snapshot.docs
-      .map((docSnap) => {
-        const c = docSnap.data();
-        const fecha = c.fecha ? formatoFecha.format(c.fecha.toDate()) : "—";
-        return `
-        <tr>
-          <td>${fecha}</td>
-          <td>${escapeHtml(nombreMaterial(c.materiaId))}</td>
-          <td>${escapeHtml(c.proveedor)}</td>
-          <td class="col-numero">${formatoNumero.format(c.cantidad)}</td>
-          <td class="col-numero">${formatoMoneda.format(c.precioTotal)}</td>
-        </tr>`;
-      })
-      .join("");
+let comprasCache = [];
+
+function renderTablaCompras() {
+  if (comprasCache.length === 0) {
+    tablaComprasBody.innerHTML =
+      '<tr><td colspan="6" class="fila-vacia">Todavía no hay compras registradas.</td></tr>';
+    return;
   }
-);
+  tablaComprasBody.innerHTML = comprasCache
+    .map((c) => {
+      const fecha = c.fecha ? formatoFecha.format(c.fecha.toDate()) : "—";
+      return `
+      <tr>
+        <td>${fecha}</td>
+        <td>${escapeHtml(nombreMaterial(c.materiaId))}</td>
+        <td>${escapeHtml(nombreProveedor(c.proveedorId))}</td>
+        <td class="col-numero">${formatoNumero.format(c.cantidad)}</td>
+        <td class="col-numero">${formatoMoneda.format(c.precioTotalConIva)}</td>
+        <td class="col-numero">${formatoMoneda.format(c.ivaTotal)}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+onSnapshot(query(movimientosCompraRef, orderBy("fecha", "desc"), limit(10)), (snapshot) => {
+  comprasCache = snapshot.docs.map((d) => d.data());
+  renderTablaCompras();
+});
 
 // ---------- Modal: nueva materia prima ----------
 
@@ -152,41 +219,68 @@ const formCompra = document.getElementById("form-compra");
 const errorCompra = document.getElementById("error-compra");
 const inputCantidad = document.getElementById("compra-cantidad");
 const inputPrecioUnitario = document.getElementById("compra-precio-unitario");
+const checkboxIvaIncluido = document.getElementById("compra-iva-incluido");
+const netoCalculadoEl = document.getElementById("compra-neto-calculado");
+const ivaCalculadoEl = document.getElementById("compra-iva-calculado");
 const totalCalculadoEl = document.getElementById("compra-total-calculado");
 
 document.getElementById("btn-abrir-compra").addEventListener("click", () => {
   if (materialesCache.length === 0) {
-    alert("Primero tenés que cargar al menos una materia prima.");
+    alert("Primero tenés que cargar al menos un elemento.");
+    return;
+  }
+  if (proveedoresCache.length === 0) {
+    alert("Primero tenés que cargar al menos un proveedor.");
     return;
   }
   formCompra.reset();
   errorCompra.hidden = true;
-  totalCalculadoEl.textContent = formatoMoneda.format(0);
+  actualizarDesgloseCalculado();
   abrirModal(modalCompra);
 });
 
-function actualizarTotalCalculado() {
+// A partir del precio unitario ingresado + el checkbox de IVA, calcula
+// neto / IVA / total de la compra. Si el precio ya incluye IVA, se
+// "desarma" dividiendo por 1 + tasa; si no lo incluye, se le suma.
+function calcularDesglose(cantidad, precioUnitario, ivaIncluido) {
+  const totalIngresado = cantidad * precioUnitario;
+  const totalNeto = ivaIncluido ? totalIngresado / (1 + TASA_IVA) : totalIngresado;
+  const ivaTotal = ivaIncluido ? totalIngresado - totalNeto : totalIngresado * TASA_IVA;
+  const totalConIva = totalNeto + ivaTotal;
+  return { totalNeto, ivaTotal, totalConIva };
+}
+
+function actualizarDesgloseCalculado() {
   const cantidad = parseFloat(inputCantidad.value) || 0;
   const precioUnitario = parseFloat(inputPrecioUnitario.value) || 0;
-  totalCalculadoEl.textContent = formatoMoneda.format(cantidad * precioUnitario);
+  const { totalNeto, ivaTotal, totalConIva } = calcularDesglose(
+    cantidad,
+    precioUnitario,
+    checkboxIvaIncluido.checked
+  );
+  netoCalculadoEl.textContent = formatoMoneda.format(totalNeto);
+  ivaCalculadoEl.textContent = formatoMoneda.format(ivaTotal);
+  totalCalculadoEl.textContent = formatoMoneda.format(totalConIva);
 }
-inputCantidad.addEventListener("input", actualizarTotalCalculado);
-inputPrecioUnitario.addEventListener("input", actualizarTotalCalculado);
+inputCantidad.addEventListener("input", actualizarDesgloseCalculado);
+inputPrecioUnitario.addEventListener("input", actualizarDesgloseCalculado);
+checkboxIvaIncluido.addEventListener("change", actualizarDesgloseCalculado);
 
 formCompra.addEventListener("submit", async (e) => {
   e.preventDefault();
   errorCompra.hidden = true;
 
   const materiaId = selectCompraMateria.value;
-  const proveedor = document.getElementById("compra-proveedor").value.trim();
+  const proveedorId = selectCompraProveedor.value;
   const cantidad = parseFloat(inputCantidad.value);
   const precioUnitario = parseFloat(inputPrecioUnitario.value);
+  const ivaIncluido = checkboxIvaIncluido.checked;
 
-  if (!materiaId || !proveedor || !(cantidad > 0) || !(precioUnitario >= 0)) return;
+  if (!materiaId || !proveedorId || !(cantidad > 0) || !(precioUnitario >= 0)) return;
 
   deshabilitarForm(formCompra, true);
   try {
-    await registrarCompra({ materiaId, proveedor, cantidad, precioUnitario });
+    await registrarCompra({ materiaId, proveedorId, cantidad, precioUnitario, ivaIncluido });
     cerrarModal(modalCompra);
   } catch (error) {
     console.error(error);
@@ -197,14 +291,14 @@ formCompra.addEventListener("submit", async (e) => {
   }
 });
 
-async function registrarCompra({ materiaId, proveedor, cantidad, precioUnitario }) {
+async function registrarCompra({ materiaId, proveedorId, cantidad, precioUnitario, ivaIncluido }) {
   const materiaRef = doc(db, "materiasPrimas", materiaId);
-  const precioTotal = Math.round(cantidad * precioUnitario * 100) / 100;
+  const { totalNeto, ivaTotal, totalConIva } = calcularDesglose(cantidad, precioUnitario, ivaIncluido);
 
   await runTransaction(db, async (tx) => {
     const materiaSnap = await tx.get(materiaRef);
     if (!materiaSnap.exists()) {
-      throw new Error("El material ya no existe.");
+      throw new Error("El elemento ya no existe.");
     }
     const stockActual = materiaSnap.data().stockActual || 0;
 
@@ -215,10 +309,13 @@ async function registrarCompra({ materiaId, proveedor, cantidad, precioUnitario 
 
     tx.set(doc(movimientosCompraRef), {
       materiaId,
-      proveedor,
+      proveedorId,
       cantidad,
       precioUnitario,
-      precioTotal,
+      ivaIncluido,
+      precioTotalNeto: Math.round(totalNeto * 100) / 100,
+      ivaTotal: Math.round(ivaTotal * 100) / 100,
+      precioTotalConIva: Math.round(totalConIva * 100) / 100,
       fecha: serverTimestamp()
     });
   });
