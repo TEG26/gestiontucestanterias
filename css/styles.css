@@ -478,6 +478,49 @@ button {
   margin: 0;
 }
 
+.linea-venta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.linea-venta .linea-venta-item {
+  flex: 2 1 180px;
+  margin: 0;
+}
+
+.linea-venta .linea-venta-cantidad,
+.linea-venta .linea-venta-precio {
+  flex: 1 1 90px;
+  width: auto;
+  margin: 0;
+}
+
+.linea-venta .linea-venta-subtotal {
+  flex: 1 1 100px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.linea-venta .linea-venta-aviso {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.alerta-advertencia {
+  background: #fdf1e7;
+  border: 1px solid var(--accent);
+  color: var(--accent-dark);
+  padding: 10px 14px;
+  margin: 4px 0 16px;
+  font-size: 13px;
+}
+
 .fila-receta .boton-quitar-fila,
 .linea-compra .boton-quitar-fila {
   background: none;

@@ -49,7 +49,7 @@
       <ul class="app-nav">
         <li><button class="activo" id="nav-stock-produccion">Stock y Producción</button></li>
         <li><button id="nav-analisis-produccion">Análisis de producción</button></li>
-        <li><button disabled title="Próximamente">Ventas y Presupuestos</button></li>
+        <li><button id="nav-ventas-presupuestos">Ventas y Presupuestos</button></li>
         <li><button disabled title="Próximamente">Egresos y Balance</button></li>
       </ul>
 
@@ -256,6 +256,92 @@
         <div id="analisis-consumo-filas"></div>
       </div>
     </main>
+
+    <main class="app-contenido" id="panel-ventas-presupuestos" hidden>
+      <div class="encabezado-seccion">
+        <div>
+          <h1>Ventas</h1>
+          <p class="ayuda">
+            Una venta puede incluir productos y/o conjuntos para un mismo
+            cliente. El stock nunca bloquea la venta — si falta, se
+            avisa pero se puede confirmar igual.
+          </p>
+        </div>
+        <div class="acciones-encabezado">
+          <button id="btn-abrir-venta" class="boton-primario boton-chico">
+            + Nueva venta
+          </button>
+        </div>
+      </div>
+
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Ítems</th>
+            <th>Medio de pago</th>
+            <th class="col-numero">Total</th>
+            <th class="col-acciones"></th>
+          </tr>
+        </thead>
+        <tbody id="tabla-ventas-body">
+          <tr><td colspan="6" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <!-- Modal: nueva venta -->
+  <div id="modal-venta" class="modal-overlay" hidden>
+    <div class="modal-tarjeta modal-tarjeta-ancha">
+      <h3>Nueva venta</h3>
+      <label>
+        Cliente
+        <input type="text" id="venta-cliente" placeholder="Nombre del cliente" required />
+      </label>
+      <label>
+        Fecha
+        <input type="date" id="venta-fecha" required />
+      </label>
+      <label>
+        Medio de pago
+        <input type="text" id="venta-medio-pago" list="lista-medios-pago" placeholder="Ej: Efectivo" required />
+        <datalist id="lista-medios-pago">
+          <option value="Efectivo"></option>
+          <option value="Transferencia"></option>
+          <option value="Tarjeta de débito"></option>
+          <option value="Tarjeta de crédito"></option>
+          <option value="Cheque"></option>
+        </datalist>
+      </label>
+      <label>
+        Facturación
+        <select id="venta-factura-a">
+          <option value="no">Sin factura A (sin IVA discriminado)</option>
+          <option value="si">Con factura A (precio incluye IVA)</option>
+        </select>
+      </label>
+
+      <p class="ayuda-modal">Ítems de la venta</p>
+      <div id="venta-lineas"></div>
+      <button type="button" id="btn-agregar-linea-venta" class="boton-secundario boton-chico boton-agregar-fila">
+        + Agregar producto o conjunto
+      </button>
+
+      <div id="venta-advertencia-stock" class="alerta-advertencia" hidden></div>
+
+      <div class="desglose-calculado">
+        <p><span>Neto</span><span id="venta-neto-calculado">$0</span></p>
+        <p><span>IVA</span><span id="venta-iva-calculado">$0</span></p>
+        <p class="desglose-total"><span>Total</span><span id="venta-total-calculado">$0</span></p>
+      </div>
+      <p class="error-form" id="error-venta" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-venta">Cancelar</button>
+        <button type="button" id="btn-guardar-venta" class="boton-primario boton-chico">Registrar venta</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: nuevo/editar elemento -->
@@ -572,5 +658,6 @@
   <script type="module" src="js/produccion.js"></script>
   <script type="module" src="js/modulos.js"></script>
   <script type="module" src="js/analisis-produccion.js"></script>
+  <script type="module" src="js/ventas.js"></script>
 </body>
 </html>

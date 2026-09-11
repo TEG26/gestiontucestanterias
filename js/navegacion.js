@@ -1,6 +1,7 @@
 const paneles = {
   "nav-stock-produccion": document.getElementById("panel-stock-produccion"),
-  "nav-analisis-produccion": document.getElementById("panel-analisis-produccion")
+  "nav-analisis-produccion": document.getElementById("panel-analisis-produccion"),
+  "nav-ventas-presupuestos": document.getElementById("panel-ventas-presupuestos")
 };
 
 Object.keys(paneles).forEach((idBoton) => {
