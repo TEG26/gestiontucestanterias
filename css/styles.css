@@ -526,6 +526,53 @@ button {
   font-size: 13px;
 }
 
+.remito-encabezado {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.remito-logo {
+  width: 120px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.remito-titulo h3 {
+  margin: 0 0 2px;
+}
+
+.remito-datos {
+  margin-bottom: 16px;
+}
+
+.remito-datos p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #contenido-remito,
+  #contenido-remito * {
+    visibility: visible;
+  }
+  #contenido-remito {
+    position: absolute;
+    inset: 0;
+    max-height: none;
+    max-width: none;
+    box-shadow: none;
+    border: none;
+  }
+  .no-imprimir {
+    display: none !important;
+  }
+}
+
 .fila-receta .boton-quitar-fila,
 .linea-compra .boton-quitar-fila {
   background: none;

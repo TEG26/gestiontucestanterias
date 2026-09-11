@@ -344,6 +344,36 @@
     </div>
   </div>
 
+  <!-- Modal: remito -->
+  <div id="modal-remito" class="modal-overlay" hidden>
+    <div class="modal-tarjeta modal-tarjeta-ancha" id="contenido-remito">
+      <div class="remito-encabezado">
+        <img src="assets/logo.png" alt="Tucumán Estanterías" class="remito-logo" />
+        <div class="remito-titulo">
+          <h3>Remito</h3>
+          <p class="ayuda-modal">Sin valor fiscal — comprobante de entrega</p>
+        </div>
+      </div>
+      <div class="remito-datos">
+        <p><strong>Cliente:</strong> <span id="remito-cliente"></span></p>
+        <p><strong>Fecha:</strong> <span id="remito-fecha"></span></p>
+      </div>
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th class="col-numero">Cantidad</th>
+          </tr>
+        </thead>
+        <tbody id="remito-items-body"></tbody>
+      </table>
+      <div class="modal-acciones no-imprimir">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-remito">Cerrar</button>
+        <button type="button" id="btn-imprimir-remito" class="boton-primario boton-chico">Imprimir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: nuevo/editar elemento -->
   <div id="modal-nueva-materia" class="modal-overlay" hidden>
     <form id="form-nueva-materia" class="modal-tarjeta">

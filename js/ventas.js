@@ -160,6 +160,7 @@ function renderTablaVentas() {
         <td>${escapeHtml(v.medioPago)}</td>
         <td class="col-numero">${formatoMoneda.format(v.montoTotal)}</td>
         <td class="col-acciones">
+          <button type="button" class="boton-accion-fila" data-ver-remito="${v.id}">Remito</button>
           <button type="button" class="boton-accion-fila" data-editar-venta="${v.id}">Editar</button>
           <button type="button" class="boton-accion-fila peligro" data-eliminar-venta="${v.id}">Eliminar</button>
         </td>
@@ -312,8 +313,13 @@ document.getElementById("btn-abrir-venta").addEventListener("click", () => {
 });
 
 tablaVentasBody.addEventListener("click", (e) => {
+  const idVerRemito = e.target.dataset.verRemito;
   const idEditar = e.target.dataset.editarVenta;
   const idEliminar = e.target.dataset.eliminarVenta;
+
+  if (idVerRemito) {
+    abrirModalRemito(idVerRemito);
+  }
 
   if (idEditar) {
     const venta = ventasCache.find((v) => v.id === idEditar);
@@ -598,6 +604,39 @@ async function eliminarVenta(venta) {
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
+
+// =====================================================================
+// Remito
+// =====================================================================
+
+const modalRemito = document.getElementById("modal-remito");
+const remitoCliente = document.getElementById("remito-cliente");
+const remitoFecha = document.getElementById("remito-fecha");
+const remitoItemsBody = document.getElementById("remito-items-body");
+const btnImprimirRemito = document.getElementById("btn-imprimir-remito");
+
+function abrirModalRemito(ventaId) {
+  const venta = ventasCache.find((v) => v.id === ventaId);
+  if (!venta) return;
+
+  remitoCliente.textContent = venta.cliente;
+  remitoFecha.textContent = venta.fecha ? formatoFecha.format(venta.fecha.toDate()) : "—";
+  remitoItemsBody.innerHTML = (venta.items || [])
+    .map(
+      (it) => `
+      <tr>
+        <td>${escapeHtml(it.nombreSnapshot)}</td>
+        <td class="col-numero">${formatoNumero.format(it.cantidad)}</td>
+      </tr>`
+    )
+    .join("");
+
+  abrirModal(modalRemito);
+}
+
+btnImprimirRemito.addEventListener("click", () => {
+  window.print();
+});
 
 // =====================================================================
 // Helpers de modal
