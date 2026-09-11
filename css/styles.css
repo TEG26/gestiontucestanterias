@@ -583,6 +583,8 @@ button {
 .modal-tarjeta {
   width: 100%;
   max-width: 380px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   padding: 28px;
