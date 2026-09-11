@@ -320,6 +320,7 @@ formNuevoProveedor.addEventListener("submit", async (e) => {
 const tablaComprasBody = document.getElementById("tabla-compras-body");
 const modalCompra = document.getElementById("modal-compra");
 const errorCompra = document.getElementById("error-compra");
+const inputCompraFecha = document.getElementById("compra-fecha");
 const selectTipoFactura = document.getElementById("compra-tipo-factura");
 const lineasCompraContenedor = document.getElementById("compra-lineas");
 const btnAgregarLineaCompra = document.getElementById("btn-agregar-linea-compra");
@@ -331,6 +332,21 @@ const btnGuardarCompra = document.getElementById("btn-guardar-compra");
 
 let editandoCompraId = null; // id de la compra original, o null si es alta
 let itemsOriginalesEdicion = []; // items de la compra tal cual estaba antes de editar
+
+// Un <input type="date"> trabaja con "YYYY-MM-DD" en horario UTC-neutral;
+// convertirlo con `new Date("YYYY-MM-DD")` interpreta esa fecha en UTC y
+// puede mostrar el día anterior en Argentina (UTC-3). Por eso se arma la
+// fecha a mano con los componentes locales.
+function fechaInputADate(valorInput) {
+  const [anio, mes, dia] = valorInput.split("-").map(Number);
+  return new Date(anio, mes - 1, dia);
+}
+function dateAFechaInput(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 // ---- Resumen "Neto / IVA / Total" a partir de un total ya conocido ----
 // (a diferencia de calcularDesglose de otras pantallas, acá el total ya
@@ -433,6 +449,7 @@ selectTipoFactura.addEventListener("change", actualizarDesgloseCalculado);
 function resetearFormCompra() {
   editandoCompraId = null;
   itemsOriginalesEdicion = [];
+  inputCompraFecha.value = dateAFechaInput(new Date());
   selectCompraProveedor.value = "";
   selectTipoFactura.value = "con_iva_no_incluido";
   lineasCompraContenedor.innerHTML = "";
@@ -501,6 +518,7 @@ tablaComprasBody.addEventListener("click", (e) => {
     if (!compra) return;
     editandoCompraId = compra.id;
     itemsOriginalesEdicion = compra.items || [];
+    inputCompraFecha.value = compra.fecha ? dateAFechaInput(compra.fecha.toDate()) : dateAFechaInput(new Date());
     selectCompraProveedor.value = compra.proveedorId;
     selectTipoFactura.value = compra.tipoFactura || "con_iva_no_incluido";
     lineasCompraContenedor.innerHTML = "";
@@ -535,8 +553,14 @@ tablaComprasBody.addEventListener("click", (e) => {
 btnGuardarCompra.addEventListener("click", async () => {
   errorCompra.hidden = true;
 
+  const fechaValor = inputCompraFecha.value;
   const proveedorId = selectCompraProveedor.value;
   const tipoFactura = selectTipoFactura.value;
+  if (!fechaValor) {
+    errorCompra.textContent = "Elegí una fecha.";
+    errorCompra.hidden = false;
+    return;
+  }
   if (!proveedorId) {
     errorCompra.textContent = "Elegí un proveedor.";
     errorCompra.hidden = false;
@@ -546,12 +570,14 @@ btnGuardarCompra.addEventListener("click", async () => {
   const items = leerLineasCompra();
   if (!items) return;
 
+  const fecha = fechaInputADate(fechaValor);
+
   btnGuardarCompra.disabled = true;
   try {
     if (editandoCompraId) {
-      await actualizarCompra(editandoCompraId, itemsOriginalesEdicion, { proveedorId, tipoFactura, items });
+      await actualizarCompra(editandoCompraId, itemsOriginalesEdicion, { fecha, proveedorId, tipoFactura, items });
     } else {
-      await registrarCompra({ proveedorId, tipoFactura, items });
+      await registrarCompra({ fecha, proveedorId, tipoFactura, items });
     }
     cerrarModal(modalCompra);
   } catch (error) {
@@ -597,7 +623,7 @@ function calcularTotalesCompra(items, tipoFactura) {
   };
 }
 
-async function registrarCompra({ proveedorId, tipoFactura, items }) {
+async function registrarCompra({ fecha, proveedorId, tipoFactura, items }) {
   const cantidadesPorElemento = agruparCantidadesPorElemento(items);
   const totales = calcularTotalesCompra(items, tipoFactura);
 
@@ -628,12 +654,12 @@ async function registrarCompra({ proveedorId, tipoFactura, items }) {
         monto: it.monto
       })),
       ...totales,
-      fecha: serverTimestamp()
+      fecha
     });
   });
 }
 
-async function actualizarCompra(compraId, itemsOriginales, { proveedorId, tipoFactura, items }) {
+async function actualizarCompra(compraId, itemsOriginales, { fecha, proveedorId, tipoFactura, items }) {
   const compraRef = doc(movimientosCompraRef, compraId);
   const totales = calcularTotalesCompra(items, tipoFactura);
 
@@ -674,6 +700,7 @@ async function actualizarCompra(compraId, itemsOriginales, { proveedorId, tipoFa
         monto: it.monto
       })),
       ...totales,
+      fecha,
       actualizadoEn: serverTimestamp()
     });
   });

@@ -42,6 +42,18 @@ function escapeHtml(str) {
   div.textContent = str ?? "";
   return div.innerHTML;
 }
+// Ver nota equivalente en materias-primas.js: se arma la fecha a mano
+// con los componentes locales para no correr un día por el uso de UTC.
+function fechaInputADate(valorInput) {
+  const [anio, mes, dia] = valorInput.split("-").map(Number);
+  return new Date(anio, mes - 1, dia);
+}
+function dateAFechaInput(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 // =====================================================================
 // Caches base: productos y elementos
@@ -134,6 +146,7 @@ function renderTablaProduccion() {
         <td class="col-acciones">
           ${pendiente ? `<button type="button" class="boton-accion-fila" data-confirmar-produccion="${f.id}">Confirmar</button>` : ""}
           <button type="button" class="boton-accion-fila" data-editar-produccion="${f.id}">Editar</button>
+          <button type="button" class="boton-accion-fila peligro" data-eliminar-produccion="${f.id}">Eliminar</button>
         </td>
       </tr>`;
     })
@@ -157,6 +170,7 @@ onSnapshot(query(movimientosDescarteRef, orderBy("fecha", "desc"), limit(10)), (
 const modalProduccion = document.getElementById("modal-produccion");
 const formProduccion = document.getElementById("form-produccion");
 const errorProduccion = document.getElementById("error-produccion");
+const inputProduccionFecha = document.getElementById("produccion-fecha");
 const inputProduccionCantidad = document.getElementById("produccion-cantidad");
 const previewConsumo = document.getElementById("produccion-consumo-preview");
 const previewConsumoFilas = document.getElementById("produccion-consumo-filas");
@@ -167,6 +181,7 @@ document.getElementById("btn-abrir-produccion").addEventListener("click", () => 
     return;
   }
   formProduccion.reset();
+  inputProduccionFecha.value = dateAFechaInput(new Date());
   errorProduccion.hidden = true;
   previewConsumo.hidden = true;
   abrirModal(modalProduccion);
@@ -216,7 +231,7 @@ formProduccion.addEventListener("submit", async (e) => {
 
   const productoId = selectProduccionProducto.value;
   const cantidadTeorica = parseFloat(inputProduccionCantidad.value);
-  if (!productoId || !(cantidadTeorica > 0)) return;
+  if (!productoId || !(cantidadTeorica > 0) || !inputProduccionFecha.value) return;
 
   const consumo = calcularConsumo(productoId, cantidadTeorica);
   if (consumo.some((c) => c.insuficiente)) {
@@ -225,9 +240,11 @@ formProduccion.addEventListener("submit", async (e) => {
     return;
   }
 
+  const fechaInicio = fechaInputADate(inputProduccionFecha.value);
+
   deshabilitarForm(formProduccion, true);
   try {
-    await iniciarProduccion(productoId, cantidadTeorica, consumo);
+    await iniciarProduccion(productoId, cantidadTeorica, consumo, fechaInicio);
     cerrarModal(modalProduccion);
   } catch (error) {
     if (error.code === "STOCK_INSUFICIENTE") {
@@ -242,7 +259,7 @@ formProduccion.addEventListener("submit", async (e) => {
   }
 });
 
-async function iniciarProduccion(productoId, cantidadTeorica, consumoPlaneado) {
+async function iniciarProduccion(productoId, cantidadTeorica, consumoPlaneado, fechaInicio) {
   await runTransaction(db, async (tx) => {
     const refsYSnaps = [];
     for (const c of consumoPlaneado) {
@@ -275,7 +292,7 @@ async function iniciarProduccion(productoId, cantidadTeorica, consumoPlaneado) {
       estado: "pendiente_confirmacion",
       cantidadReal: null,
       merma: null,
-      fechaInicio: serverTimestamp(),
+      fechaInicio,
       fechaConfirmacion: null,
       creadoPor: auth.currentUser ? auth.currentUser.uid : null
     });
@@ -374,6 +391,7 @@ async function confirmarProduccion(produccion, cantidadReal) {
 const modalEditarProduccion = document.getElementById("modal-editar-produccion");
 const formEditarProduccion = document.getElementById("form-editar-produccion");
 const errorEditarProduccion = document.getElementById("error-editar-produccion");
+const inputEditarProduccionFecha = document.getElementById("editar-produccion-fecha");
 const labelEditarProduccionProducto = document.getElementById("label-editar-produccion-producto");
 const selectEditarProduccionProducto = document.getElementById("editar-produccion-producto");
 const textoEditarProduccionProductoFijo = document.getElementById("editar-produccion-producto-fijo");
@@ -409,6 +427,9 @@ tablaProduccionBody.addEventListener("click", (e) => {
   }
 
   inputEditarProduccionTeorica.value = produccion.cantidadTeorica;
+  inputEditarProduccionFecha.value = produccion.fechaInicio
+    ? dateAFechaInput(produccion.fechaInicio.toDate())
+    : dateAFechaInput(new Date());
   labelEditarProduccionReal.hidden = !esConfirmada;
   mermaEditarProduccionEl.hidden = !esConfirmada;
   inputEditarProduccionReal.value = esConfirmada ? produccion.cantidadReal : "";
@@ -466,13 +487,14 @@ formEditarProduccion.addEventListener("submit", async (e) => {
   const productoId = productoIdEnEdicion();
   const cantidadTeorica = parseFloat(inputEditarProduccionTeorica.value);
   const cantidadReal = esConfirmada ? parseFloat(inputEditarProduccionReal.value) : null;
+  const fechaInicio = inputEditarProduccionFecha.value ? fechaInputADate(inputEditarProduccionFecha.value) : null;
 
-  if (!productoId || !(cantidadTeorica > 0)) return;
+  if (!productoId || !(cantidadTeorica > 0) || !fechaInicio) return;
   if (esConfirmada && !(cantidadReal >= 0)) return;
 
   deshabilitarForm(formEditarProduccion, true);
   try {
-    await actualizarProduccionExistente(produccionAEditar, { productoId, cantidadTeorica, cantidadReal });
+    await actualizarProduccionExistente(produccionAEditar, { productoId, cantidadTeorica, cantidadReal, fechaInicio });
     cerrarModal(modalEditarProduccion);
   } catch (error) {
     if (error.code === "STOCK_NEGATIVO") {
@@ -494,7 +516,7 @@ formEditarProduccion.addEventListener("submit", async (e) => {
 // descontado originalmente (consumoMateriales de la producción tal como
 // quedó guardada). Si además está confirmada, también ajusta el stock
 // del producto por la diferencia de cantidad real.
-async function actualizarProduccionExistente(original, { productoId, cantidadTeorica, cantidadReal }) {
+async function actualizarProduccionExistente(original, { productoId, cantidadTeorica, cantidadReal, fechaInicio }) {
   const produccionRef = doc(movimientosProduccionRef, original.id);
   const nuevoConsumo = calcularConsumo(productoId, cantidadTeorica);
   const consumoViejoPorElemento = {};
@@ -556,9 +578,84 @@ async function actualizarProduccionExistente(original, { productoId, cantidadTeo
     tx.update(produccionRef, {
       productoId,
       cantidadTeorica,
+      fechaInicio,
       consumoMateriales: nuevoConsumo.map((c) => ({ materiaId: c.materiaId, cantidadDescontada: c.cantidadDescontada })),
       ...(esConfirmada ? { cantidadReal, merma } : {})
     });
+  });
+}
+
+// ---- Eliminar producción ----
+
+tablaProduccionBody.addEventListener("click", (e) => {
+  const id = e.target.dataset.eliminarProduccion;
+  if (!id) return;
+  const produccion = produccionCache.find((p) => p.id === id);
+  if (!produccion) return;
+
+  const mensaje =
+    produccion.estado === "confirmada"
+      ? `¿Eliminar esta producción de "${nombreProducto(produccion.productoId)}"? Se revierte el stock de elementos consumidos y el stock del producto ya confirmado.`
+      : `¿Eliminar esta producción de "${nombreProducto(produccion.productoId)}"? Se revierte el stock de elementos consumidos.`;
+  if (!confirm(mensaje)) return;
+
+  eliminarProduccion(produccion).catch((error) => {
+    if (error.code === "STOCK_NEGATIVO") {
+      alert(
+        `No se puede eliminar: el stock de "${nombreProducto(
+          error.materiaId
+        )}" ya se usó (quedaría en negativo). Revisá ventas o módulos que lo hayan consumido primero.`
+      );
+    } else {
+      console.error(error);
+      alert("No se pudo eliminar la producción. Probá de nuevo.");
+    }
+  });
+});
+
+// Revierte lo que la producción había descontado de elementos (siempre
+// suma, así que nunca puede quedar negativo ahí). Si además ya estaba
+// confirmada, también resta del stock del producto lo que esa
+// confirmación había sumado — y ahí sí puede rechazarse si ese stock ya
+// se usó en otro lado (venta, módulo, etc.).
+async function eliminarProduccion(produccion) {
+  const produccionRef = doc(movimientosProduccionRef, produccion.id);
+
+  await runTransaction(db, async (tx) => {
+    const lecturasElementos = [];
+    for (const c of produccion.consumoMateriales || []) {
+      const ref = doc(materiasPrimasRef, c.materiaId);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) continue;
+      const stockActual = snap.data().stockActual || 0;
+      lecturasElementos.push({ ref, nuevoStock: stockActual + c.cantidadDescontada });
+    }
+
+    let productoRef = null;
+    let nuevoStockProducto = null;
+    if (produccion.estado === "confirmada") {
+      productoRef = doc(productosRef, produccion.productoId);
+      const productoSnap = await tx.get(productoRef);
+      if (productoSnap.exists()) {
+        const stockProductoActual = productoSnap.data().stockActual || 0;
+        nuevoStockProducto = stockProductoActual - produccion.cantidadReal;
+        if (nuevoStockProducto < 0) {
+          const err = new Error("Stock negativo");
+          err.code = "STOCK_NEGATIVO";
+          err.materiaId = produccion.productoId;
+          throw err;
+        }
+      }
+    }
+
+    lecturasElementos.forEach(({ ref, nuevoStock }) => {
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    });
+    if (productoRef && nuevoStockProducto !== null) {
+      tx.update(productoRef, { stockActual: nuevoStockProducto, actualizadoEn: serverTimestamp() });
+    }
+
+    tx.delete(produccionRef);
   });
 }
 

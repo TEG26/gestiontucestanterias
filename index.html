@@ -179,16 +179,16 @@
 
       <div class="encabezado-seccion encabezado-seccion-separado">
         <div>
-          <h2 class="subtitulo-seccion sin-margen-superior">Módulos</h2>
+          <h2 class="subtitulo-seccion sin-margen-superior">Conjuntos</h2>
           <p class="ayuda">
             Combinan productos ya fabricados (piezas sueltas). Los
             "equivalentes" son un cálculo — no se descuenta nada del
-            stock hasta que se venda un módulo.
+            stock hasta que se venda un conjunto.
           </p>
         </div>
         <div class="acciones-encabezado">
           <button id="btn-abrir-nuevo-modulo" class="boton-primario boton-chico">
-            + Nuevo módulo
+            + Nuevo conjunto
           </button>
         </div>
       </div>
@@ -196,7 +196,7 @@
       <table class="tabla-datos">
         <thead>
           <tr>
-            <th>Módulo</th>
+            <th>Conjunto</th>
             <th>Composición</th>
             <th class="col-numero">Equivalentes hoy</th>
             <th class="col-acciones"></th>
@@ -307,6 +307,10 @@
     <div class="modal-tarjeta modal-tarjeta-ancha">
       <h3 id="titulo-modal-compra">Registrar compra</h3>
       <label>
+        Fecha
+        <input type="date" id="compra-fecha" required />
+      </label>
+      <label>
         Proveedor
         <select id="compra-proveedor" required>
           <option value="" disabled selected>Elegir proveedor...</option>
@@ -382,6 +386,10 @@
     <form id="form-produccion" class="modal-tarjeta modal-tarjeta-ancha">
       <h3>Nueva producción</h3>
       <label>
+        Fecha
+        <input type="date" id="produccion-fecha" required />
+      </label>
+      <label>
         Producto
         <select id="produccion-producto" required>
           <option value="" disabled selected>Elegir producto...</option>
@@ -425,6 +433,10 @@
   <div id="modal-editar-produccion" class="modal-overlay" hidden>
     <form id="form-editar-produccion" class="modal-tarjeta modal-tarjeta-ancha">
       <h3>Editar producción</h3>
+      <label>
+        Fecha
+        <input type="date" id="editar-produccion-fecha" required />
+      </label>
       <label id="label-editar-produccion-producto">
         Producto
         <select id="editar-produccion-producto" required>
@@ -480,10 +492,10 @@
     </form>
   </div>
 
-  <!-- Modal: nuevo/editar módulo -->
+  <!-- Modal: nuevo/editar conjunto -->
   <div id="modal-nuevo-modulo" class="modal-overlay" hidden>
     <form id="form-nuevo-modulo" class="modal-tarjeta">
-      <h3 id="titulo-modal-modulo">Nuevo módulo</h3>
+      <h3 id="titulo-modal-modulo">Nuevo conjunto</h3>
       <label>
         Nombre
         <input type="text" id="nuevo-modulo-nombre" placeholder="Ej: Góndola doble 2m" required />
@@ -496,11 +508,11 @@
     </form>
   </div>
 
-  <!-- Modal: composición de un módulo -->
+  <!-- Modal: composición de un conjunto -->
   <div id="modal-composicion-modulo" class="modal-overlay" hidden>
     <div class="modal-tarjeta modal-tarjeta-ancha">
       <h3 id="titulo-modal-composicion">Composición</h3>
-      <p class="ayuda-modal">Productos (piezas sueltas) que arman una unidad de este módulo.</p>
+      <p class="ayuda-modal">Productos fabricados o elementos comprados directo (como tornillos) que arman una unidad de este conjunto.</p>
       <div id="composicion-filas"></div>
       <button type="button" id="btn-agregar-fila-composicion" class="boton-secundario boton-chico boton-agregar-fila">
         + Agregar producto a la composición
