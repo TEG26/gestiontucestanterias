@@ -159,7 +159,10 @@ function renderTablaVentas() {
         <td><span class="receta-resumen" title="${escapeHtml(resumen)}">${escapeHtml(resumen)}</span></td>
         <td>${escapeHtml(v.medioPago)}</td>
         <td class="col-numero">${formatoMoneda.format(v.montoTotal)}</td>
-        <td class="col-acciones"></td>
+        <td class="col-acciones">
+          <button type="button" class="boton-accion-fila" data-editar-venta="${v.id}">Editar</button>
+          <button type="button" class="boton-accion-fila peligro" data-eliminar-venta="${v.id}">Eliminar</button>
+        </td>
       </tr>`;
     })
     .join("");
@@ -175,6 +178,7 @@ onSnapshot(query(ventasRef, orderBy("fecha", "desc"), limit(10)), (snapshot) => 
 // =====================================================================
 
 const modalVenta = document.getElementById("modal-venta");
+const tituloModalVenta = document.getElementById("titulo-modal-venta");
 const errorVenta = document.getElementById("error-venta");
 const inputVentaCliente = document.getElementById("venta-cliente");
 const inputVentaFecha = document.getElementById("venta-fecha");
@@ -188,13 +192,13 @@ const ivaCalculadoEl = document.getElementById("venta-iva-calculado");
 const totalCalculadoEl = document.getElementById("venta-total-calculado");
 const btnGuardarVenta = document.getElementById("btn-guardar-venta");
 
-function crearLineaVenta() {
+function crearLineaVenta(item = null) {
   const fila = document.createElement("div");
   fila.className = "linea-venta";
   fila.innerHTML = `
     <select class="linea-venta-item">${opcionesItemsVenta()}</select>
-    <input type="number" class="linea-venta-cantidad" min="0.01" step="any" placeholder="Cantidad" />
-    <input type="number" class="linea-venta-precio" min="0" step="any" placeholder="Precio unitario" />
+    <input type="number" class="linea-venta-cantidad" min="0.01" step="any" placeholder="Cantidad" value="${item ? item.cantidad : ""}" />
+    <input type="number" class="linea-venta-precio" min="0" step="any" placeholder="Precio unitario" value="${item ? item.precioUnitario : ""}" />
     <span class="linea-venta-subtotal">$0</span>
     <button type="button" class="boton-quitar-fila" title="Quitar">×</button>
     <div class="linea-venta-aviso" hidden></div>
@@ -202,6 +206,8 @@ function crearLineaVenta() {
   const selectItem = fila.querySelector(".linea-venta-item");
   const inputCantidad = fila.querySelector(".linea-venta-cantidad");
   const inputPrecio = fila.querySelector(".linea-venta-precio");
+
+  if (item) selectItem.value = `${item.tipo}:${item.refId}`;
 
   selectItem.addEventListener("change", () => {
     const [tipo, refId] = selectItem.value.split(":");
@@ -216,6 +222,7 @@ function crearLineaVenta() {
     actualizarDesgloseVenta();
   });
 
+  if (item) actualizarLineaVenta(fila);
   return fila;
 }
 
@@ -280,11 +287,16 @@ btnAgregarLineaVenta.addEventListener("click", () => {
   lineasVentaContenedor.appendChild(crearLineaVenta());
 });
 
+let editandoVentaId = null; // id de la venta original, o null si es alta
+let itemsOriginalesVenta = []; // items de la venta tal cual estaba antes de editar
+
 document.getElementById("btn-abrir-venta").addEventListener("click", () => {
   if (productosCache.length === 0 && modulosCache.length === 0) {
     alert("Primero tenés que cargar al menos un producto o un conjunto.");
     return;
   }
+  editandoVentaId = null;
+  itemsOriginalesVenta = [];
   inputVentaCliente.value = "";
   inputVentaFecha.value = dateAFechaInput(new Date());
   inputVentaMedioPago.value = "";
@@ -293,8 +305,48 @@ document.getElementById("btn-abrir-venta").addEventListener("click", () => {
   lineasVentaContenedor.appendChild(crearLineaVenta());
   errorVenta.hidden = true;
   advertenciaStock.hidden = true;
+  tituloModalVenta.textContent = "Nueva venta";
+  btnGuardarVenta.textContent = "Registrar venta";
   actualizarDesgloseVenta();
   abrirModal(modalVenta);
+});
+
+tablaVentasBody.addEventListener("click", (e) => {
+  const idEditar = e.target.dataset.editarVenta;
+  const idEliminar = e.target.dataset.eliminarVenta;
+
+  if (idEditar) {
+    const venta = ventasCache.find((v) => v.id === idEditar);
+    if (!venta) return;
+    editandoVentaId = venta.id;
+    itemsOriginalesVenta = venta.items || [];
+    inputVentaCliente.value = venta.cliente;
+    inputVentaFecha.value = venta.fecha ? dateAFechaInput(venta.fecha.toDate()) : dateAFechaInput(new Date());
+    inputVentaMedioPago.value = venta.medioPago;
+    selectVentaFacturaA.value = venta.facturaA ? "si" : "no";
+    lineasVentaContenedor.innerHTML = "";
+    itemsOriginalesVenta.forEach((it) => lineasVentaContenedor.appendChild(crearLineaVenta(it)));
+    errorVenta.hidden = true;
+    tituloModalVenta.textContent = "Editar venta";
+    btnGuardarVenta.textContent = "Guardar cambios";
+    actualizarDesgloseVenta();
+    abrirModal(modalVenta);
+  }
+
+  if (idEliminar) {
+    const venta = ventasCache.find((v) => v.id === idEliminar);
+    if (!venta) return;
+    if (
+      !confirm(
+        `¿Eliminar esta venta de "${venta.cliente}"? Se revierte el stock descontado (puede quedar de más si ya se repuso de otra forma).`
+      )
+    )
+      return;
+    eliminarVenta(venta).catch((error) => {
+      console.error(error);
+      alert("No se pudo eliminar la venta. Probá de nuevo.");
+    });
+  }
 });
 
 function leerLineasVenta() {
@@ -358,11 +410,15 @@ btnGuardarVenta.addEventListener("click", async () => {
 
   btnGuardarVenta.disabled = true;
   try {
-    await registrarVenta({ cliente, fecha, medioPago, facturaA, items });
+    if (editandoVentaId) {
+      await actualizarVenta(editandoVentaId, itemsOriginalesVenta, { cliente, fecha, medioPago, facturaA, items });
+    } else {
+      await registrarVenta({ cliente, fecha, medioPago, facturaA, items });
+    }
     cerrarModal(modalVenta);
   } catch (error) {
     console.error(error);
-    errorVenta.textContent = "No se pudo registrar la venta. Probá de nuevo.";
+    errorVenta.textContent = "No se pudo guardar la venta. Probá de nuevo.";
     errorVenta.hidden = false;
   } finally {
     btnGuardarVenta.disabled = false;
@@ -379,6 +435,35 @@ function calcularDesgloseVenta(items, facturaA) {
   return { totalNeto: round2(totalNeto), ivaTotal: round2(ivaTotal), totalConIva: round2(total) };
 }
 
+// Suma productos y elementos afectados por una lista de ítems de venta,
+// expandiendo los conjuntos a sus componentes. `composicionesCache` se
+// comparte entre llamadas dentro de la misma transacción para no leer
+// dos veces el mismo conjunto (por ejemplo al comparar venta vieja vs
+// nueva en una edición).
+async function calcularDeltasDeItems(tx, items, composicionesCache) {
+  const deltaProductos = {};
+  const deltaElementos = {};
+  for (const it of items) {
+    if (it.tipo === "producto") {
+      deltaProductos[it.refId] = (deltaProductos[it.refId] || 0) + it.cantidad;
+    } else {
+      if (!(it.refId in composicionesCache)) {
+        const snap = await tx.get(doc(modulosRef, it.refId));
+        composicionesCache[it.refId] = snap.exists() ? snap.data().composicion || [] : [];
+      }
+      composicionesCache[it.refId].map(normalizarItemComposicion).forEach((c) => {
+        const totalComponente = c.cantidad * it.cantidad;
+        if (c.tipo === "elemento") {
+          deltaElementos[c.refId] = (deltaElementos[c.refId] || 0) + totalComponente;
+        } else {
+          deltaProductos[c.refId] = (deltaProductos[c.refId] || 0) + totalComponente;
+        }
+      });
+    }
+  }
+  return { deltaProductos, deltaElementos };
+}
+
 // Descuenta stock según lo vendido: si el ítem es un producto, directo;
 // si es un conjunto, se expande a sus componentes (productos y/o
 // elementos) leyendo la composición ACTUAL del conjunto en el momento
@@ -388,30 +473,7 @@ async function registrarVenta({ cliente, fecha, medioPago, facturaA, items }) {
   const desglose = calcularDesgloseVenta(items, facturaA);
 
   await runTransaction(db, async (tx) => {
-    const composicionesModulo = {};
-    for (const it of items) {
-      if (it.tipo === "modulo" && !(it.refId in composicionesModulo)) {
-        const snap = await tx.get(doc(modulosRef, it.refId));
-        composicionesModulo[it.refId] = snap.exists() ? snap.data().composicion || [] : [];
-      }
-    }
-
-    const deltaProductos = {};
-    const deltaElementos = {};
-    items.forEach((it) => {
-      if (it.tipo === "producto") {
-        deltaProductos[it.refId] = (deltaProductos[it.refId] || 0) + it.cantidad;
-      } else {
-        (composicionesModulo[it.refId] || []).map(normalizarItemComposicion).forEach((c) => {
-          const totalComponente = c.cantidad * it.cantidad;
-          if (c.tipo === "elemento") {
-            deltaElementos[c.refId] = (deltaElementos[c.refId] || 0) + totalComponente;
-          } else {
-            deltaProductos[c.refId] = (deltaProductos[c.refId] || 0) + totalComponente;
-          }
-        });
-      }
-    });
+    const { deltaProductos, deltaElementos } = await calcularDeltasDeItems(tx, items, {});
 
     const lecturasProductos = [];
     for (const id of Object.keys(deltaProductos)) {
@@ -444,6 +506,92 @@ async function registrarVenta({ cliente, fecha, medioPago, facturaA, items }) {
       montoTotal: desglose.totalConIva,
       creadoPor: auth.currentUser ? auth.currentUser.uid : null
     });
+  });
+}
+
+// Ajusta el stock por la diferencia entre lo que la venta descontaba
+// antes y lo que va a descontar ahora (misma idea que en compras: se
+// revierte lo viejo y se aplica lo nuevo en un solo neto por ítem). Ojo:
+// si un conjunto involucrado cambió de composición desde la venta
+// original, la reversión usa la composición ACTUAL, no la de aquel
+// momento — es una simplificación asumida a propósito.
+async function actualizarVenta(ventaId, itemsOriginales, { cliente, fecha, medioPago, facturaA, items }) {
+  const ventaRef = doc(ventasRef, ventaId);
+  const desglose = calcularDesgloseVenta(items, facturaA);
+
+  await runTransaction(db, async (tx) => {
+    const composicionesCache = {};
+    const viejo = await calcularDeltasDeItems(tx, itemsOriginales, composicionesCache);
+    const nuevo = await calcularDeltasDeItems(tx, items, composicionesCache);
+
+    const idsProductos = new Set([...Object.keys(viejo.deltaProductos), ...Object.keys(nuevo.deltaProductos)]);
+    const idsElementos = new Set([...Object.keys(viejo.deltaElementos), ...Object.keys(nuevo.deltaElementos)]);
+
+    const lecturasProductos = [];
+    for (const id of idsProductos) {
+      const ref = doc(productosRef, id);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) continue;
+      const netoDelta = (nuevo.deltaProductos[id] || 0) - (viejo.deltaProductos[id] || 0);
+      lecturasProductos.push({ ref, nuevoStock: (snap.data().stockActual || 0) - netoDelta });
+    }
+    const lecturasElementos = [];
+    for (const id of idsElementos) {
+      const ref = doc(materiasPrimasRef, id);
+      const snap = await tx.get(ref);
+      if (!snap.exists()) continue;
+      const netoDelta = (nuevo.deltaElementos[id] || 0) - (viejo.deltaElementos[id] || 0);
+      lecturasElementos.push({ ref, nuevoStock: (snap.data().stockActual || 0) - netoDelta });
+    }
+
+    lecturasProductos.forEach(({ ref, nuevoStock }) => {
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    });
+    lecturasElementos.forEach(({ ref, nuevoStock }) => {
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    });
+
+    tx.update(ventaRef, {
+      cliente,
+      fecha,
+      items,
+      medioPago,
+      facturaA,
+      montoNeto: desglose.totalNeto,
+      ivaTotal: desglose.ivaTotal,
+      montoTotal: desglose.totalConIva,
+      actualizadoEn: serverTimestamp()
+    });
+  });
+}
+
+async function eliminarVenta(venta) {
+  const ventaRef = doc(ventasRef, venta.id);
+
+  await runTransaction(db, async (tx) => {
+    const { deltaProductos, deltaElementos } = await calcularDeltasDeItems(tx, venta.items || [], {});
+
+    const lecturasProductos = [];
+    for (const id of Object.keys(deltaProductos)) {
+      const ref = doc(productosRef, id);
+      const snap = await tx.get(ref);
+      if (snap.exists()) lecturasProductos.push({ ref, nuevoStock: (snap.data().stockActual || 0) + deltaProductos[id] });
+    }
+    const lecturasElementos = [];
+    for (const id of Object.keys(deltaElementos)) {
+      const ref = doc(materiasPrimasRef, id);
+      const snap = await tx.get(ref);
+      if (snap.exists()) lecturasElementos.push({ ref, nuevoStock: (snap.data().stockActual || 0) + deltaElementos[id] });
+    }
+
+    lecturasProductos.forEach(({ ref, nuevoStock }) => {
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    });
+    lecturasElementos.forEach(({ ref, nuevoStock }) => {
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    });
+
+    tx.delete(ventaRef);
   });
 }
 

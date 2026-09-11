@@ -129,7 +129,10 @@ function renderTablaProduccion() {
           <td class="col-numero">—</td>
           <td class="col-numero">${formatoNumero.format(f.cantidad)}</td>
           <td class="col-numero">—</td>
-          <td class="col-acciones"></td>
+          <td class="col-acciones">
+            <button type="button" class="boton-accion-fila" data-editar-descarte="${f.id}">Editar</button>
+            <button type="button" class="boton-accion-fila peligro" data-eliminar-descarte="${f.id}">Eliminar</button>
+          </td>
         </tr>`;
       }
       const pendiente = f.estado === "pendiente_confirmacion";
@@ -666,15 +669,63 @@ async function eliminarProduccion(produccion) {
 const modalDescarte = document.getElementById("modal-descarte");
 const formDescarte = document.getElementById("form-descarte");
 const errorDescarte = document.getElementById("error-descarte");
+const inputDescarteFecha = document.getElementById("descarte-fecha");
+const inputDescarteCantidad = document.getElementById("descarte-cantidad");
+const inputDescarteNota = document.getElementById("descarte-nota");
+const tituloModalDescarte = document.getElementById("titulo-modal-descarte");
+const btnGuardarDescarte = document.getElementById("btn-guardar-descarte");
+
+let editandoDescarte = null; // { id, productoId, cantidad } original, o null si es alta
 
 document.getElementById("btn-abrir-descarte").addEventListener("click", () => {
   if (productosCache.length === 0) {
     alert("Primero tenés que cargar al menos un producto.");
     return;
   }
+  editandoDescarte = null;
   formDescarte.reset();
+  inputDescarteFecha.value = dateAFechaInput(new Date());
   errorDescarte.hidden = true;
+  tituloModalDescarte.textContent = "Hecho con descarte";
+  btnGuardarDescarte.textContent = "Registrar";
   abrirModal(modalDescarte);
+});
+
+tablaProduccionBody.addEventListener("click", (e) => {
+  const idEditar = e.target.dataset.editarDescarte;
+  const idEliminar = e.target.dataset.eliminarDescarte;
+
+  if (idEditar) {
+    const descarte = descarteCache.find((d) => d.id === idEditar);
+    if (!descarte) return;
+    editandoDescarte = { id: descarte.id, productoId: descarte.productoId, cantidad: descarte.cantidad };
+    inputDescarteFecha.value = descarte.fecha ? dateAFechaInput(descarte.fecha.toDate()) : dateAFechaInput(new Date());
+    selectDescarteProducto.value = descarte.productoId;
+    inputDescarteCantidad.value = descarte.cantidad;
+    inputDescarteNota.value = descarte.nota || "";
+    errorDescarte.hidden = true;
+    tituloModalDescarte.textContent = "Editar descarte";
+    btnGuardarDescarte.textContent = "Guardar cambios";
+    abrirModal(modalDescarte);
+  }
+
+  if (idEliminar) {
+    const descarte = descarteCache.find((d) => d.id === idEliminar);
+    if (!descarte) return;
+    if (!confirm(`¿Eliminar este descarte de "${nombreProducto(descarte.productoId)}"? Se descuenta del stock.`)) return;
+    eliminarDescarte(descarte).catch((error) => {
+      if (error.code === "STOCK_NEGATIVO") {
+        alert(
+          `No se puede eliminar: el stock de "${nombreProducto(
+            descarte.productoId
+          )}" ya se usó (quedaría en negativo). Revisá ventas o conjuntos que lo hayan consumido primero.`
+        );
+      } else {
+        console.error(error);
+        alert("No se pudo eliminar el descarte. Probá de nuevo.");
+      }
+    });
+  }
 });
 
 formDescarte.addEventListener("submit", async (e) => {
@@ -682,24 +733,35 @@ formDescarte.addEventListener("submit", async (e) => {
   errorDescarte.hidden = true;
 
   const productoId = selectDescarteProducto.value;
-  const cantidad = parseFloat(document.getElementById("descarte-cantidad").value);
-  const nota = document.getElementById("descarte-nota").value.trim();
-  if (!productoId || !(cantidad > 0)) return;
+  const cantidad = parseFloat(inputDescarteCantidad.value);
+  const nota = inputDescarteNota.value.trim();
+  const fechaValor = inputDescarteFecha.value;
+  if (!productoId || !(cantidad > 0) || !fechaValor) return;
+
+  const fecha = fechaInputADate(fechaValor);
 
   deshabilitarForm(formDescarte, true);
   try {
-    await registrarDescarte(productoId, cantidad, nota);
+    if (editandoDescarte) {
+      await actualizarDescarte(editandoDescarte, { productoId, cantidad, nota, fecha });
+    } else {
+      await registrarDescarte({ productoId, cantidad, nota, fecha });
+    }
     cerrarModal(modalDescarte);
   } catch (error) {
-    console.error(error);
-    errorDescarte.textContent = "No se pudo registrar el descarte. Probá de nuevo.";
+    if (error.code === "STOCK_NEGATIVO") {
+      errorDescarte.textContent = "Ese cambio dejaría el stock del producto en negativo (ya se usó en otro lado).";
+    } else {
+      console.error(error);
+      errorDescarte.textContent = "No se pudo guardar el descarte. Probá de nuevo.";
+    }
     errorDescarte.hidden = false;
   } finally {
     deshabilitarForm(formDescarte, false);
   }
 });
 
-async function registrarDescarte(productoId, cantidad, nota) {
+async function registrarDescarte({ productoId, cantidad, nota, fecha }) {
   const productoRef = doc(productosRef, productoId);
 
   await runTransaction(db, async (tx) => {
@@ -716,9 +778,72 @@ async function registrarDescarte(productoId, cantidad, nota) {
       productoId,
       cantidad,
       nota: nota || null,
-      fecha: serverTimestamp(),
+      fecha,
       creadoPor: auth.currentUser ? auth.currentUser.uid : null
     });
+  });
+}
+
+async function actualizarDescarte(original, { productoId, cantidad, nota, fecha }) {
+  const descarteRef = doc(movimientosDescarteRef, original.id);
+  const mismoProducto = original.productoId === productoId;
+
+  await runTransaction(db, async (tx) => {
+    const productoRefOriginal = doc(productosRef, original.productoId);
+    const snapOriginal = await tx.get(productoRefOriginal);
+    if (!snapOriginal.exists()) throw new Error("El producto original de este descarte ya no existe.");
+
+    if (mismoProducto) {
+      const stockActual = snapOriginal.data().stockActual || 0;
+      const nuevoStock = stockActual - original.cantidad + cantidad;
+      if (nuevoStock < 0) {
+        const err = new Error("Stock negativo");
+        err.code = "STOCK_NEGATIVO";
+        throw err;
+      }
+      tx.update(productoRefOriginal, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    } else {
+      const productoRefNuevo = doc(productosRef, productoId);
+      const snapNuevo = await tx.get(productoRefNuevo);
+      if (!snapNuevo.exists()) throw new Error("El producto nuevo ya no existe.");
+      const stockOriginal = snapOriginal.data().stockActual || 0;
+      const nuevoStockOriginal = stockOriginal - original.cantidad;
+      if (nuevoStockOriginal < 0) {
+        const err = new Error("Stock negativo");
+        err.code = "STOCK_NEGATIVO";
+        throw err;
+      }
+      const stockNuevo = snapNuevo.data().stockActual || 0;
+      tx.update(productoRefOriginal, { stockActual: nuevoStockOriginal, actualizadoEn: serverTimestamp() });
+      tx.update(productoRefNuevo, { stockActual: stockNuevo + cantidad, actualizadoEn: serverTimestamp() });
+    }
+
+    tx.update(descarteRef, {
+      productoId,
+      cantidad,
+      nota: nota || null,
+      fecha
+    });
+  });
+}
+
+async function eliminarDescarte(descarte) {
+  const descarteRef = doc(movimientosDescarteRef, descarte.id);
+  const productoRef = doc(productosRef, descarte.productoId);
+
+  await runTransaction(db, async (tx) => {
+    const productoSnap = await tx.get(productoRef);
+    if (productoSnap.exists()) {
+      const stockActual = productoSnap.data().stockActual || 0;
+      const nuevoStock = stockActual - descarte.cantidad;
+      if (nuevoStock < 0) {
+        const err = new Error("Stock negativo");
+        err.code = "STOCK_NEGATIVO";
+        throw err;
+      }
+      tx.update(productoRef, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() });
+    }
+    tx.delete(descarteRef);
   });
 }
 

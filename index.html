@@ -135,7 +135,7 @@
             <th>Unidad</th>
             <th class="col-numero">Stock actual</th>
             <th>Receta</th>
-            <th class="col-numero">Costo</th>
+            <th class="col-numero">Costo de material</th>
             <th class="col-numero">Precio venta</th>
             <th class="col-acciones"></th>
           </tr>
@@ -202,7 +202,7 @@
             <th>Conjunto</th>
             <th>Composición</th>
             <th class="col-numero">Equivalentes hoy</th>
-            <th class="col-numero">Costo</th>
+            <th class="col-numero">Costo de material</th>
             <th class="col-numero">Precio venta</th>
             <th class="col-acciones"></th>
           </tr>
@@ -295,7 +295,7 @@
   <!-- Modal: nueva venta -->
   <div id="modal-venta" class="modal-overlay" hidden>
     <div class="modal-tarjeta modal-tarjeta-ancha">
-      <h3>Nueva venta</h3>
+      <h3 id="titulo-modal-venta">Nueva venta</h3>
       <label>
         Cliente
         <input type="text" id="venta-cliente" placeholder="Nombre del cliente" required />
@@ -576,8 +576,12 @@
   <!-- Modal: hecho con descarte -->
   <div id="modal-descarte" class="modal-overlay" hidden>
     <form id="form-descarte" class="modal-tarjeta">
-      <h3>Hecho con descarte</h3>
+      <h3 id="titulo-modal-descarte">Hecho con descarte</h3>
       <p class="ayuda-modal">Suma al stock del producto sin consumir elementos.</p>
+      <label>
+        Fecha
+        <input type="date" id="descarte-fecha" required />
+      </label>
       <label>
         Producto
         <select id="descarte-producto" required>
@@ -595,7 +599,7 @@
       <p class="error-form" id="error-descarte" hidden></p>
       <div class="modal-acciones">
         <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-descarte">Cancelar</button>
-        <button type="submit" class="boton-primario boton-chico">Registrar</button>
+        <button type="submit" id="btn-guardar-descarte" class="boton-primario boton-chico">Registrar</button>
       </div>
     </form>
   </div>

@@ -175,6 +175,11 @@ button {
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .app-sidebar .marca {
