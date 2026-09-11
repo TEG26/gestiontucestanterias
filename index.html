@@ -141,6 +141,41 @@
           <tr><td colspan="5" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
+
+      <div class="encabezado-seccion encabezado-seccion-separado">
+        <div>
+          <h2 class="subtitulo-seccion sin-margen-superior">Producción</h2>
+          <p class="ayuda">
+            Cargá la cantidad teórica y después confirmá cuánto entró
+            realmente — la diferencia queda como merma.
+          </p>
+        </div>
+        <div class="acciones-encabezado">
+          <button id="btn-abrir-descarte" class="boton-secundario boton-chico">
+            + Hecho con descarte
+          </button>
+          <button id="btn-abrir-produccion" class="boton-primario boton-chico">
+            + Nueva producción
+          </button>
+        </div>
+      </div>
+
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Producto</th>
+            <th>Tipo</th>
+            <th class="col-numero">Teórica</th>
+            <th class="col-numero">Real</th>
+            <th class="col-numero">Merma</th>
+            <th class="col-acciones"></th>
+          </tr>
+        </thead>
+        <tbody id="tabla-produccion-body">
+          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
     </main>
   </div>
 
@@ -275,9 +310,81 @@
     </div>
   </div>
 
+  <!-- Modal: nueva producción -->
+  <div id="modal-produccion" class="modal-overlay" hidden>
+    <form id="form-produccion" class="modal-tarjeta modal-tarjeta-ancha">
+      <h3>Nueva producción</h3>
+      <label>
+        Producto
+        <select id="produccion-producto" required>
+          <option value="" disabled selected>Elegir producto...</option>
+        </select>
+      </label>
+      <label>
+        Cantidad teórica
+        <input type="number" id="produccion-cantidad" min="0.01" step="any" required />
+      </label>
+      <div id="produccion-consumo-preview" class="consumo-preview" hidden>
+        <p class="consumo-preview-titulo">Esto va a descontar del stock:</p>
+        <div id="produccion-consumo-filas"></div>
+      </div>
+      <p class="error-form" id="error-produccion" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-produccion">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Iniciar producción</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: confirmar producción -->
+  <div id="modal-confirmar-produccion" class="modal-overlay" hidden>
+    <form id="form-confirmar-produccion" class="modal-tarjeta">
+      <h3>Confirmar producción</h3>
+      <p class="ayuda-modal" id="confirmar-produccion-resumen"></p>
+      <label>
+        Cantidad real ingresada (buena)
+        <input type="number" id="confirmar-cantidad-real" min="0" step="any" required />
+      </label>
+      <p class="total-calculado" id="confirmar-merma-calculada"></p>
+      <p class="error-form" id="error-confirmar-produccion" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-confirmar-produccion">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Confirmar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: hecho con descarte -->
+  <div id="modal-descarte" class="modal-overlay" hidden>
+    <form id="form-descarte" class="modal-tarjeta">
+      <h3>Hecho con descarte</h3>
+      <p class="ayuda-modal">Suma al stock del producto sin consumir elementos.</p>
+      <label>
+        Producto
+        <select id="descarte-producto" required>
+          <option value="" disabled selected>Elegir producto...</option>
+        </select>
+      </label>
+      <label>
+        Cantidad
+        <input type="number" id="descarte-cantidad" min="0.01" step="any" required />
+      </label>
+      <label>
+        Nota (opcional)
+        <input type="text" id="descarte-nota" placeholder="Ej: sobrante de retazos de chapa" />
+      </label>
+      <p class="error-form" id="error-descarte" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-descarte">Cancelar</button>
+        <button type="submit" class="boton-primario boton-chico">Registrar</button>
+      </div>
+    </form>
+  </div>
+
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/auth.js"></script>
   <script type="module" src="js/materias-primas.js"></script>
   <script type="module" src="js/productos.js"></script>
+  <script type="module" src="js/produccion.js"></script>
 </body>
 </html>

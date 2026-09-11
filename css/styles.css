@@ -453,6 +453,37 @@ button {
   font-size: 13px;
 }
 
+.consumo-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  margin: 4px 0 16px;
+  font-size: 13px;
+}
+
+.consumo-preview-titulo {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.consumo-preview-fila {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  padding: 2px 0;
+}
+
+.consumo-preview-fila.insuficiente {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.estado-pendiente {
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
 /* ---------- Modales ---------- */
 
 .modal-overlay {
