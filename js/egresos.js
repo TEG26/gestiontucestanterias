@@ -291,7 +291,7 @@ function renderTablaEgresos() {
     .join("");
 }
 
-onSnapshot(query(egresosRef, orderBy("fecha", "desc"), limit(500)), (snapshot) => {
+onSnapshot(query(egresosRef, orderBy("fecha", "desc"), limit(3000)), (snapshot) => {
   egresosCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderTablaEgresos();
   recalcularTodo();
@@ -393,11 +393,11 @@ btnLimpiarFiltrosEgresos.addEventListener("click", () => {
 // Ventas y compras (solo para los cálculos de balance/IVA)
 // =====================================================================
 
-onSnapshot(query(ventasRef, orderBy("fecha", "desc"), limit(1000)), (snapshot) => {
+onSnapshot(query(ventasRef, orderBy("fecha", "desc"), limit(3000)), (snapshot) => {
   ventasCache = snapshot.docs.map((d) => d.data());
   recalcularTodo();
 });
-onSnapshot(query(movimientosCompraRef, orderBy("fecha", "desc"), limit(1000)), (snapshot) => {
+onSnapshot(query(movimientosCompraRef, orderBy("fecha", "desc"), limit(3000)), (snapshot) => {
   comprasCache = snapshot.docs.map((d) => d.data());
   recalcularTodo();
 });

@@ -170,7 +170,7 @@ function renderTablaVentas() {
     .join("");
 }
 
-onSnapshot(query(ventasRef, orderBy("fecha", "desc"), limit(500)), (snapshot) => {
+onSnapshot(query(ventasRef, orderBy("fecha", "desc"), limit(2000)), (snapshot) => {
   ventasCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderTablaVentas();
 });

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Importar histórico — Tucumán Estanterías</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .import-wrap { max-width: 760px; margin: 0 auto; padding: 40px 24px; }
+    .paso { background: var(--surface); border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
+    .paso h2 { margin: 0 0 8px; font-size: 16px; }
+    .paso p { margin: 0 0 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+    .log { font-family: var(--font-mono); font-size: 12px; background: var(--bg);
+           border: 1px solid var(--border); padding: 12px; max-height: 320px; overflow-y: auto;
+           white-space: pre-wrap; margin-top: 12px; }
+    .log .ok { color: var(--success); }
+    .log .err { color: var(--danger); }
+    .barra { background: var(--bg); border: 1px solid var(--border); height: 18px; margin-top: 12px; }
+    .barra > div { background: var(--accent); height: 100%; width: 0; transition: width .2s; }
+    input[type=file] { font-family: inherit; font-size: 14px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+  <section id="pantalla-login" class="pantalla-centrada">
+    <div class="tarjeta-login">
+      <img src="assets/logo.png" alt="Tucumán Estanterías" class="logo-login" />
+      <p class="subtitulo">Importación de histórico</p>
+      <button id="btn-login" class="boton-google">Continuar con Google</button>
+    </div>
+  </section>
+
+  <section id="pantalla-no-autorizado" class="pantalla-centrada" hidden>
+    <div class="tarjeta-login no-autorizado">
+      <p class="marca">Acceso no autorizado</p>
+      <p class="email-destacado" id="email-no-autorizado"></p>
+      <button id="btn-volver-login" class="boton-secundario">Probar con otra cuenta</button>
+    </div>
+  </section>
+
+  <div id="pantalla-app" class="import-wrap" hidden>
+    <h1>Importar histórico</h1>
+    <p class="ayuda">
+      Carga masiva de las ventas y egresos que venían del Excel. Las ventas
+      históricas <strong>no descuentan stock</strong> — el stock arranca limpio
+      con el conteo físico.
+    </p>
+
+    <div class="paso">
+      <h2>1. Elegir el archivo</h2>
+      <p>Seleccioná <code>datos_migracion.json</code>.</p>
+      <input type="file" id="archivo" accept=".json" />
+      <div id="resumen-archivo"></div>
+    </div>
+
+    <div class="paso">
+      <h2>2. Verificar qué ya hay cargado</h2>
+      <p>Comprueba si una importación anterior ya dejó datos, para no duplicar.</p>
+      <button id="btn-verificar" class="boton-secundario boton-chico" disabled>Verificar</button>
+      <div class="log" id="log-verificar" hidden></div>
+    </div>
+
+    <div class="paso">
+      <h2>3. Importar</h2>
+      <p>
+        Crea los productos y categorías que falten, y después carga las ventas y
+        los egresos. Cada registro queda marcado como importado, así se puede
+        deshacer si algo sale mal. No cierres la pestaña mientras corre.
+      </p>
+      <button id="btn-importar" class="boton-primario boton-chico" disabled>Importar todo</button>
+      <div class="barra" id="barra" hidden><div id="barra-relleno"></div></div>
+      <div class="log" id="log-importar" hidden></div>
+    </div>
+
+    <div class="paso">
+      <h2>Deshacer</h2>
+      <p>Borra únicamente lo que haya entrado por esta importación. No toca nada cargado a mano.</p>
+      <button id="btn-deshacer" class="boton-secundario boton-chico">Deshacer importación</button>
+      <div class="log" id="log-deshacer" hidden></div>
+    </div>
+
+    <p style="margin-top:24px"><a href="index.html">← Volver a la app</a></p>
+  </div>
+
+  <script type="module" src="js/importador.js"></script>
+</body>
+</html>
