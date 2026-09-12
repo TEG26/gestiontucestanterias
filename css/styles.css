@@ -526,41 +526,15 @@ button {
   font-size: 13px;
 }
 
-.remito-encabezado {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.remito-logo {
-  width: 120px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.remito-titulo h3 {
-  margin: 0 0 2px;
-}
-
-.remito-datos {
-  margin-bottom: 16px;
-}
-
-.remito-datos p {
-  margin: 4px 0;
-  font-size: 14px;
-}
-
 @media print {
   body * {
     visibility: hidden;
   }
-  #contenido-remito,
-  #contenido-remito * {
+  .doc-imprimible,
+  .doc-imprimible * {
     visibility: visible;
   }
-  #contenido-remito {
+  .doc-imprimible {
     position: absolute;
     inset: 0;
     max-height: none;
@@ -571,6 +545,119 @@ button {
   .no-imprimir {
     display: none !important;
   }
+}
+
+.doc-encabezado {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: start;
+  border-bottom: 2px solid var(--text);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.doc-logo {
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+}
+
+.doc-numero-box {
+  border: 2px solid var(--text);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  align-self: center;
+}
+
+.doc-datos-doc {
+  text-align: right;
+}
+
+.doc-datos-doc h3 {
+  margin: 0 0 6px;
+  letter-spacing: 0.02em;
+}
+
+.doc-datos-doc p {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+.doc-info-empresa,
+.doc-info-cliente {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.doc-info-empresa p,
+.doc-info-cliente p {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+.doc-tabla {
+  margin-bottom: 16px;
+}
+
+.doc-tabla .fila-descripcion td {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.doc-total {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 10px;
+  border-top: 2px solid var(--text);
+  padding-top: 10px;
+  margin-bottom: 16px;
+}
+
+.doc-total p {
+  margin: 0;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.doc-total-nota {
+  font-weight: 400 !important;
+  font-size: 12px !important;
+  color: var(--text-muted);
+}
+
+.doc-notas p {
+  margin: 3px 0;
+  font-size: 13px;
+}
+
+.doc-notas {
+  margin-bottom: 20px;
+}
+
+.doc-firma {
+  margin-top: 40px;
+}
+
+.doc-firma-linea {
+  border-top: 1px solid var(--text);
+  width: 280px;
+  margin: 40px 0 4px;
+}
+
+.doc-firma-etiqueta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
 }
 
 .fila-receta .boton-quitar-fila,
@@ -656,6 +743,32 @@ button {
   margin-top: 6px;
   padding: 9px 10px;
   font-size: 14px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.filtros-listado {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+
+.filtros-listado label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.filtros-listado input {
+  display: block;
+  width: 100%;
+  min-width: 160px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  font-size: 13px;
   font-family: inherit;
   border: 1px solid var(--border);
   background: var(--surface);

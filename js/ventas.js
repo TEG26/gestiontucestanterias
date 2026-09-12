@@ -144,11 +144,12 @@ function resumenItemsVenta(items) {
 }
 
 function renderTablaVentas() {
-  if (ventasCache.length === 0) {
-    tablaVentasBody.innerHTML = '<tr><td colspan="6" class="fila-vacia">Todavía no hay ventas registradas.</td></tr>';
+  const ventasFiltradas = aplicarFiltrosVentas(ventasCache);
+  if (ventasFiltradas.length === 0) {
+    tablaVentasBody.innerHTML = '<tr><td colspan="6" class="fila-vacia">No hay ventas que coincidan con el filtro.</td></tr>';
     return;
   }
-  tablaVentasBody.innerHTML = ventasCache
+  tablaVentasBody.innerHTML = ventasFiltradas
     .map((v) => {
       const fecha = v.fecha ? formatoFecha.format(v.fecha.toDate()) : "—";
       const resumen = resumenItemsVenta(v.items || []);
@@ -169,8 +170,43 @@ function renderTablaVentas() {
     .join("");
 }
 
-onSnapshot(query(ventasRef, orderBy("fecha", "desc"), limit(10)), (snapshot) => {
+onSnapshot(query(ventasRef, orderBy("fecha", "desc"), limit(500)), (snapshot) => {
   ventasCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderTablaVentas();
+});
+
+// ---------- Filtros del listado ----------
+
+const inputFiltroMes = document.getElementById("ventas-filtro-mes");
+const inputFiltroCliente = document.getElementById("ventas-filtro-cliente");
+const inputFiltroTexto = document.getElementById("ventas-filtro-texto");
+const btnLimpiarFiltros = document.getElementById("btn-limpiar-filtros-ventas");
+
+function aplicarFiltrosVentas(ventas) {
+  const mes = inputFiltroMes.value; // "YYYY-MM" o ""
+  const cliente = inputFiltroCliente.value.trim().toLowerCase();
+  const texto = inputFiltroTexto.value.trim().toLowerCase();
+
+  return ventas.filter((v) => {
+    if (mes && v.fecha) {
+      const fechaMes = dateAFechaInput(v.fecha.toDate()).slice(0, 7);
+      if (fechaMes !== mes) return false;
+    }
+    if (cliente && !v.cliente.toLowerCase().includes(cliente)) return false;
+    if (texto) {
+      const bolsa = `${v.cliente} ${(v.items || []).map((it) => it.nombreSnapshot).join(" ")}`.toLowerCase();
+      if (!bolsa.includes(texto)) return false;
+    }
+    return true;
+  });
+}
+[inputFiltroMes, inputFiltroCliente, inputFiltroTexto].forEach((input) => {
+  input.addEventListener("input", renderTablaVentas);
+});
+btnLimpiarFiltros.addEventListener("click", () => {
+  inputFiltroMes.value = "";
+  inputFiltroCliente.value = "";
+  inputFiltroTexto.value = "";
   renderTablaVentas();
 });
 
@@ -610,23 +646,59 @@ function round2(n) {
 // =====================================================================
 
 const modalRemito = document.getElementById("modal-remito");
+const remitoNumero = document.getElementById("remito-numero");
 const remitoCliente = document.getElementById("remito-cliente");
 const remitoFecha = document.getElementById("remito-fecha");
 const remitoItemsBody = document.getElementById("remito-items-body");
 const btnImprimirRemito = document.getElementById("btn-imprimir-remito");
 
+// Si el ítem es un conjunto, se listan además sus componentes (con la
+// composición ACTUAL) a modo de detalle — igual que en tu remito de
+// referencia, donde debajo de "10 Módulo 30x90x200" aparecen los
+// estantes, parantes y tornillería que lo arman.
+function construirFilasRemito(items) {
+  const filas = [];
+  items.forEach((it) => {
+    if (it.tipo === "producto") {
+      filas.push({ producto: it.nombreSnapshot, descripcion: "", cantidad: formatoNumero.format(it.cantidad) });
+      return;
+    }
+    filas.push({
+      producto: `${formatoNumero.format(it.cantidad)} ${it.nombreSnapshot}`,
+      descripcion: "",
+      cantidad: ""
+    });
+    const modulo = modulosCache.find((m) => m.id === it.refId);
+    const composicion = modulo && modulo.composicion ? modulo.composicion.map(normalizarItemComposicion) : [];
+    composicion.forEach((c) => {
+      const nombreComponente =
+        c.tipo === "elemento"
+          ? materialesCache.find((x) => x.id === c.refId)?.nombre || "(elemento eliminado)"
+          : nombreDeItem("producto", c.refId);
+      filas.push({
+        producto: "",
+        descripcion: nombreComponente,
+        cantidad: formatoNumero.format(c.cantidad * it.cantidad)
+      });
+    });
+  });
+  return filas;
+}
+
 function abrirModalRemito(ventaId) {
   const venta = ventasCache.find((v) => v.id === ventaId);
   if (!venta) return;
 
+  remitoNumero.textContent = venta.id.slice(-6).toUpperCase();
   remitoCliente.textContent = venta.cliente;
   remitoFecha.textContent = venta.fecha ? formatoFecha.format(venta.fecha.toDate()) : "—";
-  remitoItemsBody.innerHTML = (venta.items || [])
+  remitoItemsBody.innerHTML = construirFilasRemito(venta.items || [])
     .map(
-      (it) => `
-      <tr>
-        <td>${escapeHtml(it.nombreSnapshot)}</td>
-        <td class="col-numero">${formatoNumero.format(it.cantidad)}</td>
+      (f) => `
+      <tr class="${f.producto ? "" : "fila-descripcion"}">
+        <td>${escapeHtml(f.producto)}</td>
+        <td>${escapeHtml(f.descripcion)}</td>
+        <td class="col-numero">${f.cantidad}</td>
       </tr>`
     )
     .join("");

@@ -124,12 +124,13 @@ function resumenItems(items) {
 }
 
 function renderTablaPresupuestos() {
-  if (presupuestosCache.length === 0) {
+  const presupuestosFiltrados = aplicarFiltrosPresupuestos(presupuestosCache);
+  if (presupuestosFiltrados.length === 0) {
     tablaPresupuestosBody.innerHTML =
-      '<tr><td colspan="6" class="fila-vacia">Todavía no hay presupuestos registrados.</td></tr>';
+      '<tr><td colspan="6" class="fila-vacia">No hay presupuestos que coincidan con el filtro.</td></tr>';
     return;
   }
-  tablaPresupuestosBody.innerHTML = presupuestosCache
+  tablaPresupuestosBody.innerHTML = presupuestosFiltrados
     .map((p) => {
       const fecha = p.fecha ? formatoFecha.format(p.fecha.toDate()) : "—";
       const resumen = resumenItems(p.items || []);
@@ -142,6 +143,7 @@ function renderTablaPresupuestos() {
         <td class="col-numero">${formatoMoneda.format(p.montoTotal)}</td>
         <td>${convertido ? '<span class="estado-pendiente" style="color:var(--success)">Convertido</span>' : "Pendiente"}</td>
         <td class="col-acciones">
+          <button type="button" class="boton-accion-fila" data-imprimir-presupuesto="${p.id}">Imprimir</button>
           ${
             convertido
               ? ""
@@ -155,8 +157,43 @@ function renderTablaPresupuestos() {
     .join("");
 }
 
-onSnapshot(query(presupuestosRef, orderBy("fecha", "desc"), limit(10)), (snapshot) => {
+onSnapshot(query(presupuestosRef, orderBy("fecha", "desc"), limit(500)), (snapshot) => {
   presupuestosCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderTablaPresupuestos();
+});
+
+// ---------- Filtros del listado ----------
+
+const inputFiltroMes = document.getElementById("presupuestos-filtro-mes");
+const inputFiltroCliente = document.getElementById("presupuestos-filtro-cliente");
+const inputFiltroTexto = document.getElementById("presupuestos-filtro-texto");
+const btnLimpiarFiltros = document.getElementById("btn-limpiar-filtros-presupuestos");
+
+function aplicarFiltrosPresupuestos(presupuestos) {
+  const mes = inputFiltroMes.value;
+  const cliente = inputFiltroCliente.value.trim().toLowerCase();
+  const texto = inputFiltroTexto.value.trim().toLowerCase();
+
+  return presupuestos.filter((p) => {
+    if (mes && p.fecha) {
+      const fechaMes = dateAFechaInput(p.fecha.toDate()).slice(0, 7);
+      if (fechaMes !== mes) return false;
+    }
+    if (cliente && !p.cliente.toLowerCase().includes(cliente)) return false;
+    if (texto) {
+      const bolsa = `${p.cliente} ${(p.items || []).map((it) => it.nombreSnapshot).join(" ")}`.toLowerCase();
+      if (!bolsa.includes(texto)) return false;
+    }
+    return true;
+  });
+}
+[inputFiltroMes, inputFiltroCliente, inputFiltroTexto].forEach((input) => {
+  input.addEventListener("input", renderTablaPresupuestos);
+});
+btnLimpiarFiltros.addEventListener("click", () => {
+  inputFiltroMes.value = "";
+  inputFiltroCliente.value = "";
+  inputFiltroTexto.value = "";
   renderTablaPresupuestos();
 });
 
@@ -306,6 +343,11 @@ tablaPresupuestosBody.addEventListener("click", (e) => {
   const idEditar = e.target.dataset.editarPresupuesto;
   const idEliminar = e.target.dataset.eliminarPresupuesto;
   const idConvertir = e.target.dataset.convertirPresupuesto;
+  const idImprimir = e.target.dataset.imprimirPresupuesto;
+
+  if (idImprimir) {
+    abrirModalImprimir(idImprimir);
+  }
 
   if (idEditar) {
     const presupuesto = presupuestosCache.find((p) => p.id === idEditar);
@@ -533,6 +575,58 @@ async function convertirPresupuestoEnVenta(presupuesto, { fecha, medioPago, fact
     });
   });
 }
+
+// =====================================================================
+// Imprimir presupuesto
+// =====================================================================
+
+const modalImprimir = document.getElementById("modal-imprimir-presupuesto");
+const impNumero = document.getElementById("presupuesto-imp-numero");
+const impFecha = document.getElementById("presupuesto-imp-fecha");
+const impCliente = document.getElementById("presupuesto-imp-cliente");
+const impItemsBody = document.getElementById("presupuesto-imp-items-body");
+const impTotal = document.getElementById("presupuesto-imp-total");
+const impNotaIva = document.getElementById("presupuesto-imp-nota-iva");
+const impValidez = document.getElementById("presupuesto-imp-validez");
+const impPago = document.getElementById("presupuesto-imp-pago");
+const impEntrega = document.getElementById("presupuesto-imp-entrega");
+const impNota = document.getElementById("presupuesto-imp-nota");
+const btnImprimirPresupuesto = document.getElementById("btn-imprimir-presupuesto");
+
+function abrirModalImprimir(presupuestoId) {
+  const presupuesto = presupuestosCache.find((p) => p.id === presupuestoId);
+  if (!presupuesto) return;
+
+  impNumero.textContent = presupuesto.id.slice(-6).toUpperCase();
+  impFecha.textContent = presupuesto.fecha ? formatoFecha.format(presupuesto.fecha.toDate()) : "—";
+  impCliente.textContent = presupuesto.cliente;
+
+  impItemsBody.innerHTML = (presupuesto.items || [])
+    .map(
+      (it) => `
+      <tr>
+        <td>${escapeHtml(it.nombreSnapshot)}</td>
+        <td class="col-numero">${formatoNumero.format(it.cantidad)}</td>
+        <td class="col-numero">${formatoMoneda.format(it.precioUnitario)}</td>
+        <td class="col-numero">${formatoMoneda.format(it.subtotal)}</td>
+      </tr>`
+    )
+    .join("");
+
+  impTotal.textContent = formatoMoneda.format(presupuesto.montoTotal);
+  impNotaIva.textContent = presupuesto.condicionIva === "incluido" ? "precio con IVA incluido" : "precio sin IVA";
+  impValidez.textContent = `Validez de la cotización: ${presupuesto.plazoValidezDias} días`;
+  impPago.textContent = `Condiciones de pago: ${presupuesto.condicionesPago}`;
+  impEntrega.textContent = `Entrega: ${presupuesto.condicionEntrega}`;
+  impNota.textContent = presupuesto.notaAclaratoria || "";
+  impNota.hidden = !presupuesto.notaAclaratoria;
+
+  abrirModal(modalImprimir);
+}
+
+btnImprimirPresupuesto.addEventListener("click", () => {
+  window.print();
+});
 
 // =====================================================================
 // Helpers

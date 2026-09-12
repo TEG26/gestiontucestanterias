@@ -274,6 +274,22 @@
         </div>
       </div>
 
+      <div class="filtros-listado">
+        <label>
+          Mes
+          <input type="month" id="ventas-filtro-mes" />
+        </label>
+        <label>
+          Cliente
+          <input type="text" id="ventas-filtro-cliente" placeholder="Filtrar por cliente" />
+        </label>
+        <label>
+          Buscar
+          <input type="text" id="ventas-filtro-texto" placeholder="Cliente, producto o conjunto" />
+        </label>
+        <button type="button" id="btn-limpiar-filtros-ventas" class="boton-secundario boton-chico">Limpiar</button>
+      </div>
+
       <table class="tabla-datos">
         <thead>
           <tr>
@@ -304,6 +320,22 @@
             + Nuevo presupuesto
           </button>
         </div>
+      </div>
+
+      <div class="filtros-listado">
+        <label>
+          Mes
+          <input type="month" id="presupuestos-filtro-mes" />
+        </label>
+        <label>
+          Cliente
+          <input type="text" id="presupuestos-filtro-cliente" placeholder="Filtrar por cliente" />
+        </label>
+        <label>
+          Buscar
+          <input type="text" id="presupuestos-filtro-texto" placeholder="Cliente, producto o conjunto" />
+        </label>
+        <button type="button" id="btn-limpiar-filtros-presupuestos" class="boton-secundario boton-chico">Limpiar</button>
       </div>
 
       <table class="tabla-datos">
@@ -378,27 +410,44 @@
 
   <!-- Modal: remito -->
   <div id="modal-remito" class="modal-overlay" hidden>
-    <div class="modal-tarjeta modal-tarjeta-ancha" id="contenido-remito">
-      <div class="remito-encabezado">
-        <img src="assets/logo.png" alt="Tucumán Estanterías" class="remito-logo" />
-        <div class="remito-titulo">
-          <h3>Remito</h3>
-          <p class="ayuda-modal">Sin valor fiscal — comprobante de entrega</p>
+    <div class="modal-tarjeta modal-tarjeta-ancha doc-imprimible" id="contenido-remito">
+      <div class="doc-encabezado">
+        <img src="assets/logo.png" alt="Tucumán Estanterías" class="doc-logo" />
+        <div class="doc-numero-box">R</div>
+        <div class="doc-datos-doc">
+          <h3>REMITO</h3>
+          <p>Nº: <span id="remito-numero"></span></p>
+          <p>Fecha: <span id="remito-fecha"></span></p>
         </div>
       </div>
-      <div class="remito-datos">
-        <p><strong>Cliente:</strong> <span id="remito-cliente"></span></p>
-        <p><strong>Fecha:</strong> <span id="remito-fecha"></span></p>
+      <div class="doc-info-empresa">
+        <p>Tucumán Estanterías</p>
+        <p>Razón social: FACTORY HOLDING S.A.S</p>
+        <p>CUIT: </p>
+        <p>25 de Mayo 1763</p>
+        <p>4000 San Miguel de Tucumán</p>
+        <p>ARGENTINA</p>
       </div>
-      <table class="tabla-datos">
+      <div class="doc-info-cliente">
+        <p>CUIT: </p>
+        <p>Cliente: <span id="remito-cliente"></span></p>
+        <p>Dirección: </p>
+      </div>
+      <table class="tabla-datos doc-tabla">
         <thead>
           <tr>
+            <th>Producto</th>
             <th>Descripción</th>
             <th class="col-numero">Cantidad</th>
           </tr>
         </thead>
         <tbody id="remito-items-body"></tbody>
       </table>
+      <div class="doc-firma">
+        <p>Recibí conforme</p>
+        <div class="doc-firma-linea"></div>
+        <p class="doc-firma-etiqueta">Nombre, apellido, firma y DNI</p>
+      </div>
       <div class="modal-acciones no-imprimir">
         <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-remito">Cerrar</button>
         <button type="button" id="btn-imprimir-remito" class="boton-primario boton-chico">Imprimir</button>
@@ -480,6 +529,60 @@
         <button type="submit" class="boton-primario boton-chico">Confirmar venta</button>
       </div>
     </form>
+  </div>
+
+  <!-- Modal: imprimir presupuesto -->
+  <div id="modal-imprimir-presupuesto" class="modal-overlay" hidden>
+    <div class="modal-tarjeta modal-tarjeta-ancha doc-imprimible" id="contenido-presupuesto">
+      <div class="doc-encabezado">
+        <img src="assets/logo.png" alt="Tucumán Estanterías" class="doc-logo" />
+        <div class="doc-numero-box">P</div>
+        <div class="doc-datos-doc">
+          <h3>PRESUPUESTO</h3>
+          <p>Nº: <span id="presupuesto-imp-numero"></span></p>
+          <p>Fecha: <span id="presupuesto-imp-fecha"></span></p>
+        </div>
+      </div>
+      <div class="doc-info-empresa">
+        <p>Tucumán Estanterías</p>
+        <p>Razón social: FACTORY HOLDING S.A.S</p>
+        <p>CUIT: </p>
+        <p>25 de Mayo 1763</p>
+        <p>4000 San Miguel de Tucumán</p>
+        <p>ARGENTINA</p>
+      </div>
+      <div class="doc-info-cliente">
+        <p>CUIT: </p>
+        <p>Cliente: <span id="presupuesto-imp-cliente"></span></p>
+        <p>Domicilio: </p>
+      </div>
+      <table class="tabla-datos doc-tabla">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="col-numero">Cantidad</th>
+            <th class="col-numero">Precio unitario</th>
+            <th class="col-numero">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody id="presupuesto-imp-items-body"></tbody>
+      </table>
+      <div class="doc-total">
+        <p>TOTAL <span id="presupuesto-imp-total"></span></p>
+        <p class="doc-total-nota" id="presupuesto-imp-nota-iva"></p>
+      </div>
+      <div class="doc-notas">
+        <p>Cotización en PESOS ARGENTINOS</p>
+        <p id="presupuesto-imp-validez"></p>
+        <p id="presupuesto-imp-pago"></p>
+        <p id="presupuesto-imp-entrega"></p>
+        <p id="presupuesto-imp-nota"></p>
+      </div>
+      <div class="modal-acciones no-imprimir">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-imprimir-presupuesto">Cerrar</button>
+        <button type="button" id="btn-imprimir-presupuesto" class="boton-primario boton-chico">Imprimir</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: nuevo/editar elemento -->
