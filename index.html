@@ -187,12 +187,14 @@
     </main>
 
     <main class="app-contenido" id="panel-produccion" hidden>
-      <h1>Producción</h1>
-      <p class="ayuda">
-        Cargá la cantidad teórica y después confirmá cuánto entró
-        realmente — la diferencia queda como merma.
-      </p>
-
+      <div class="encabezado-seccion">
+        <div>
+          <h1>Producción</h1>
+          <p class="ayuda">
+            Cargá la cantidad teórica y después confirmá cuánto entró
+            realmente — la diferencia queda como merma.
+          </p>
+        </div>
         <div class="acciones-encabezado">
           <button id="btn-abrir-descarte" class="boton-secundario boton-chico">
             + Hecho con descarte
@@ -227,12 +229,134 @@
         <div>
           <h1>Análisis de producción</h1>
           <p class="ayuda">
-            Cuánto se podría producir hoy con el stock actual, y qué
-            consume una cantidad puntual de cualquier producto.
+            Cuánto cuesta realmente fabricar cada cosa, cuánto se puede
+            producir hoy, y qué pasa con el costo si cambian los precios
+            de la materia prima.
           </p>
         </div>
       </div>
 
+      <!-- ---------- Costos fijos del mes ---------- -->
+      <h2 class="subtitulo-seccion sin-margen-superior">Costo fijo de producción</h2>
+      <p class="ayuda">
+        Los gastos del mes que no son materia prima, repartidos entre las
+        unidades vendidas. Es lo que hay que sumarle al material para
+        saber el costo real.
+      </p>
+      <div class="filtros-listado">
+        <label>
+          Mes
+          <input type="month" id="cf-mes" />
+        </label>
+        <label>
+          Unidades a prorratear
+          <input type="number" id="cf-unidades" min="1" step="1" />
+        </label>
+        <button type="button" id="cf-restaurar" class="boton-secundario boton-chico">Usar unidades vendidas</button>
+      </div>
+      <div class="grilla-indicadores" id="cf-indicadores"></div>
+
+      <!-- ---------- Simulador de precios ---------- -->
+      <h2 class="subtitulo-seccion">Simulador de precios de materia prima</h2>
+      <p class="ayuda">
+        Cambiá un precio para ver cómo quedaría el costo sin tocar los
+        datos reales. Dejá el campo vacío para usar el precio de la
+        última compra.
+      </p>
+      <div class="filtros-listado">
+        <label class="label-checkbox" style="margin:0">
+          <input type="checkbox" id="sim-activo" />
+          Usar precios simulados en todos los cálculos de abajo
+        </label>
+        <button type="button" id="sim-limpiar" class="boton-secundario boton-chico">Limpiar simulación</button>
+      </div>
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Elemento</th>
+            <th>Unidad</th>
+            <th class="col-numero">Último costo real</th>
+            <th class="col-numero">Precio simulado</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-simulador-body">
+          <tr><td colspan="4" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ---------- Costeo de productos ---------- -->
+      <h2 class="subtitulo-seccion">Costo y margen — Productos</h2>
+      <input type="text" id="costeo-productos-buscador" class="buscador-tabla" placeholder="Buscar producto..." />
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="col-numero">Costo material</th>
+            <th class="col-numero">Costo fijo</th>
+            <th class="col-numero">Costo total</th>
+            <th class="col-numero">Precio venta</th>
+            <th class="col-numero">Margen</th>
+            <th class="col-numero">Margen %</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-costeo-productos-body">
+          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ---------- Costeo de conjuntos ---------- -->
+      <h2 class="subtitulo-seccion">Costo y margen — Conjuntos</h2>
+      <input type="text" id="costeo-conjuntos-buscador" class="buscador-tabla" placeholder="Buscar conjunto..." />
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Conjunto</th>
+            <th class="col-numero">Costo material</th>
+            <th class="col-numero">Costo fijo</th>
+            <th class="col-numero">Costo total</th>
+            <th class="col-numero">Precio venta</th>
+            <th class="col-numero">Margen</th>
+            <th class="col-numero">Margen %</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-costeo-conjuntos-body">
+          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+      <div id="alertas-costeo"></div>
+
+      <!-- ---------- Aprovechamiento de chapa ---------- -->
+      <h2 class="subtitulo-seccion">Aprovechamiento de chapa</h2>
+      <p class="ayuda">
+        Cuántas piezas entran en una chapa y qué superficie consume cada
+        una — el dato que después va en la receta.
+      </p>
+      <div class="filtros-listado">
+        <label>
+          Lado A de la pieza (m)
+          <input type="number" id="ap-lado-a" min="0.001" step="any" placeholder="0.30" />
+        </label>
+        <label>
+          Lado B de la pieza (m)
+          <input type="number" id="ap-lado-b" min="0.001" step="any" placeholder="0.90" />
+        </label>
+        <label>
+          Chapa: ancho (m)
+          <input type="number" id="ap-chapa-ancho" min="0.1" step="any" value="1" />
+        </label>
+        <label>
+          Chapa: largo (m)
+          <input type="number" id="ap-chapa-largo" min="0.1" step="any" value="2" />
+        </label>
+        <label>
+          Elemento (chapa)
+          <select id="ap-elemento"><option value="">Elegir...</option></select>
+        </label>
+      </div>
+      <div id="ap-resultado" class="consumo-preview" hidden></div>
+
+      <!-- ---------- Producible hoy ---------- -->
+      <h2 class="subtitulo-seccion">Producible hoy con el stock actual</h2>
       <input type="text" id="analisis-buscador" class="buscador-tabla" placeholder="Buscar producto..." />
       <table class="tabla-datos">
         <thead>
@@ -247,7 +371,7 @@
         </tbody>
       </table>
 
-      <h2 class="subtitulo-seccion">Calculadora rápida</h2>
+      <h2 class="subtitulo-seccion">Calculadora rápida de consumo</h2>
       <p class="ayuda">Elegí un producto y una cantidad para ver el consumo exacto, sin registrar nada.</p>
       <div class="calculadora-analisis">
         <label>
@@ -318,13 +442,14 @@
     </main>
 
     <main class="app-contenido" id="panel-presupuestos" hidden>
-      <h1>Presupuestos</h1>
-      <p class="ayuda">
-        Mismos ítems y precios que una venta, más condiciones. Un
-        presupuesto aceptado se convierte en venta con un clic, sin
-        recargar nada.
-      </p>
-
+      <div class="encabezado-seccion">
+        <div>
+          <h1>Presupuestos</h1>
+          <p class="ayuda">
+            Mismos ítems y precios que una venta, más condiciones. Un
+            presupuesto aceptado se convierte en venta con un clic, sin
+            recargar nada.
+          </p>
         </div>
         <div class="acciones-encabezado">
           <button id="btn-abrir-presupuesto" class="boton-primario boton-chico">
@@ -453,12 +578,14 @@
     </main>
 
     <main class="app-contenido" id="panel-egresos" hidden>
-      <h1>Egresos</h1>
-      <p class="ayuda">
-        La compra de materia prima ya se registra en Stock — acá
-        van los demás gastos del negocio.
-      </p>
-
+      <div class="encabezado-seccion">
+        <div>
+          <h1>Egresos</h1>
+          <p class="ayuda">
+            La compra de materia prima ya se registra en Stock — acá
+            van los demás gastos del negocio.
+          </p>
+        </div>
         <div class="acciones-encabezado">
           <button id="btn-abrir-categorias" class="boton-secundario boton-chico">
             Categorías

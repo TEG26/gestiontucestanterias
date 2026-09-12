@@ -24,6 +24,7 @@ const productosRef = collection(db, "productos");
 const categoriasGastoRef = collection(db, "categoriasGasto");
 const ventasRef = collection(db, "ventas");
 const egresosRef = collection(db, "egresos");
+const modulosRef = collection(db, "modulos");
 
 const TASA_IVA = 0.21;
 
@@ -287,6 +288,160 @@ document.getElementById("btn-importar").addEventListener("click", async () => {
   }
 });
 
+
+// =====================================================================
+// Importación de recetas y costos de producción
+// =====================================================================
+
+let datosProd = null;
+
+document.getElementById("archivo-prod").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    datosProd = JSON.parse(await file.text());
+    document.getElementById("resumen-archivo-prod").innerHTML = `
+      <div class="log" style="display:block">
+        Elementos: ${datosProd.elementos.length}
+        Productos: ${datosProd.productos.length}
+        Conjuntos: ${datosProd.conjuntos.length}
+      </div>`;
+    document.getElementById("btn-importar-prod").disabled = false;
+  } catch (err) {
+    console.error(err);
+    document.getElementById("resumen-archivo-prod").innerHTML =
+      '<p class="error-form">No se pudo leer el archivo.</p>';
+  }
+});
+
+document.getElementById("btn-importar-prod").addEventListener("click", async () => {
+  if (!datosProd) return;
+  if (!confirm("Se van a crear/completar elementos, recetas de productos y composiciones de conjuntos. ¿Continuar?")) return;
+
+  const btn = document.getElementById("btn-importar-prod");
+  btn.disabled = true;
+  document.getElementById("log-importar-prod").innerHTML = "";
+  const LOG = "log-importar-prod";
+
+  try {
+    // ---- Elementos (materia prima) ----
+    escribirLog(LOG, "Leyendo elementos existentes...");
+    const snapMat = await getDocs(collection(db, "materiasPrimas"));
+    const idPorElemento = {};
+    snapMat.forEach((d) => (idPorElemento[d.data().nombre] = d.id));
+
+    const opsMat = [];
+    datosProd.elementos.forEach((el) => {
+      if (idPorElemento[el.nombre]) return;
+      const ref = doc(collection(db, "materiasPrimas"));
+      idPorElemento[el.nombre] = ref.id;
+      // El costo del Excel entra como punto de partida: la próxima
+      // compra real de ese elemento lo pisa automáticamente.
+      opsMat.push((batch) =>
+        batch.set(ref, {
+          nombre: el.nombre,
+          unidad: el.unidad,
+          stockActual: 0,
+          activo: true,
+          ultimoCostoNeto: el.costoReferencia,
+          origenImportacion: ORIGEN,
+          creadoEn: serverTimestamp(),
+          actualizadoEn: serverTimestamp()
+        })
+      );
+    });
+    escribirLog(LOG, `Elementos nuevos: ${opsMat.length}`);
+    if (opsMat.length) await escribirEnLotes(opsMat, LOG, "elementos");
+
+    // ---- Productos con receta ----
+    escribirLog(LOG, "Leyendo productos existentes...");
+    const snapProd = await getDocs(productosRef);
+    const idPorProducto = {};
+    snapProd.forEach((d) => (idPorProducto[d.data().nombre] = d.id));
+
+    const opsProd = [];
+    let nuevos = 0, actualizados = 0;
+    datosProd.productos.forEach((p) => {
+      const receta = p.receta.map((r) => ({
+        materiaId: idPorElemento[r.elemento],
+        cantidadPorUnidad: r.cantidadPorUnidad
+      })).filter((r) => r.materiaId);
+
+      const existente = idPorProducto[p.nombre];
+      if (existente) {
+        actualizados++;
+        opsProd.push((batch) =>
+          batch.update(doc(productosRef, existente), { receta, actualizadoEn: serverTimestamp() })
+        );
+      } else {
+        nuevos++;
+        const ref = doc(productosRef);
+        idPorProducto[p.nombre] = ref.id;
+        opsProd.push((batch) =>
+          batch.set(ref, {
+            nombre: p.nombre,
+            unidad: p.unidad,
+            receta,
+            stockActual: 0,
+            activo: true,
+            origenImportacion: ORIGEN,
+            creadoEn: serverTimestamp(),
+            actualizadoEn: serverTimestamp()
+          })
+        );
+      }
+    });
+    escribirLog(LOG, `Productos: ${nuevos} nuevos, ${actualizados} con receta completada`);
+    if (opsProd.length) await escribirEnLotes(opsProd, LOG, "productos");
+
+    // ---- Conjuntos con composición ----
+    escribirLog(LOG, "Leyendo conjuntos existentes...");
+    const snapMod = await getDocs(modulosRef);
+    const idPorConjunto = {};
+    snapMod.forEach((d) => (idPorConjunto[d.data().nombre] = d.id));
+
+    const opsMod = [];
+    const sinResolver = new Set();
+    datosProd.conjuntos.forEach((c) => {
+      const composicion = c.composicion.map((it) => {
+        const refId = it.tipo === "elemento" ? idPorElemento[it.nombre] : idPorProducto[it.nombre];
+        if (!refId) { sinResolver.add(it.nombre); return null; }
+        return { tipo: it.tipo, refId, cantidad: it.cantidad };
+      }).filter(Boolean);
+
+      const existente = idPorConjunto[c.nombre];
+      if (existente) {
+        opsMod.push((batch) =>
+          batch.update(doc(modulosRef, existente), { composicion, actualizadoEn: serverTimestamp() })
+        );
+      } else {
+        opsMod.push((batch) =>
+          batch.set(doc(modulosRef), {
+            nombre: c.nombre,
+            composicion,
+            activo: true,
+            origenImportacion: ORIGEN,
+            creadoEn: serverTimestamp(),
+            actualizadoEn: serverTimestamp()
+          })
+        );
+      }
+    });
+    if (sinResolver.size) {
+      escribirLog(LOG, `Piezas que no se pudieron enlazar: ${[...sinResolver].join(", ")}`, "err");
+    }
+    escribirLog(LOG, `Conjuntos a cargar: ${opsMod.length}`);
+    if (opsMod.length) await escribirEnLotes(opsMod, LOG, "conjuntos");
+
+    escribirLog(LOG, "Listo. Revisá el panel de Análisis de producción.", "ok");
+  } catch (err) {
+    console.error(err);
+    escribirLog(LOG, "ERROR: " + err.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // =====================================================================
 // Deshacer
 // =====================================================================
@@ -317,6 +472,8 @@ document.getElementById("btn-deshacer").addEventListener("click", async () => {
     await borrarImportados(ventasRef, "ventas");
     await borrarImportados(egresosRef, "egresos");
     await borrarImportados(productosRef, "productos");
+    await borrarImportados(modulosRef, "conjuntos");
+    await borrarImportados(collection(db, "materiasPrimas"), "elementos");
     await borrarImportados(categoriasGastoRef, "categorías");
     escribirLog("log-deshacer", "Listo, la base quedó como antes de importar.", "ok");
   } catch (err) {

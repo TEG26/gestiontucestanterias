@@ -73,6 +73,20 @@
     </div>
 
     <div class="paso">
+      <h2>Importar recetas y costos de producción</h2>
+      <p>
+        Archivo <code>datos_produccion.json</code>: crea los elementos de
+        materia prima con su costo de referencia, los productos con su
+        receta, y los conjuntos con su composición. Si un producto ya
+        existe, le completa la receta sin duplicarlo.
+      </p>
+      <input type="file" id="archivo-prod" accept=".json" />
+      <div id="resumen-archivo-prod"></div>
+      <button id="btn-importar-prod" class="boton-primario boton-chico" disabled>Importar producción</button>
+      <div class="log" id="log-importar-prod" hidden></div>
+    </div>
+
+    <div class="paso">
       <h2>Deshacer</h2>
       <p>Borra únicamente lo que haya entrado por esta importación. No toca nada cargado a mano.</p>
       <button id="btn-deshacer" class="boton-secundario boton-chico">Deshacer importación</button>

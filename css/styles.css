@@ -1120,3 +1120,19 @@ button {
   font-size: 13px;
   margin: -6px 0 14px;
 }
+
+.input-simulado {
+  width: 130px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  text-align: right;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.tabla-datos td.insuficiente {
+  color: var(--danger);
+  font-weight: 600;
+}
