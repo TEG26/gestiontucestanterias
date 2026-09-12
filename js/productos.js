@@ -82,13 +82,20 @@ function calcularCosto(receta) {
   return { costo, completo };
 }
 
+const inputBuscadorProductos = document.getElementById("productos-buscador");
+inputBuscadorProductos.addEventListener("input", renderTablaProductos);
+
 function renderTablaProductos() {
-  if (productosCache.length === 0) {
-    tablaProductosBody.innerHTML =
-      '<tr><td colspan="7" class="fila-vacia">Todavía no cargaste ningún producto.</td></tr>';
+  const texto = inputBuscadorProductos.value.trim().toLowerCase();
+  const productos = texto ? productosCache.filter((p) => p.nombre.toLowerCase().includes(texto)) : productosCache;
+
+  if (productos.length === 0) {
+    tablaProductosBody.innerHTML = `<tr><td colspan="7" class="fila-vacia">${
+      texto ? "No hay productos que coincidan con la búsqueda." : "Todavía no cargaste ningún producto."
+    }</td></tr>`;
     return;
   }
-  tablaProductosBody.innerHTML = productosCache
+  tablaProductosBody.innerHTML = productos
     .map((p) => {
       const resumen = resumenReceta(p.receta);
       const { costo, completo } = calcularCosto(p.receta);

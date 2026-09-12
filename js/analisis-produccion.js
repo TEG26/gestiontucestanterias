@@ -44,12 +44,20 @@ function producibleHoy(receta) {
   return minimo === Infinity ? null : minimo;
 }
 
+const inputBuscadorAnalisis = document.getElementById("analisis-buscador");
+inputBuscadorAnalisis.addEventListener("input", renderTablaAnalisis);
+
 function renderTablaAnalisis() {
-  if (productosCache.length === 0) {
-    tablaAnalisisBody.innerHTML = '<tr><td colspan="3" class="fila-vacia">Todavía no hay productos cargados.</td></tr>';
+  const texto = inputBuscadorAnalisis.value.trim().toLowerCase();
+  const productos = texto ? productosCache.filter((p) => p.nombre.toLowerCase().includes(texto)) : productosCache;
+
+  if (productos.length === 0) {
+    tablaAnalisisBody.innerHTML = `<tr><td colspan="3" class="fila-vacia">${
+      texto ? "No hay productos que coincidan con la búsqueda." : "Todavía no hay productos cargados."
+    }</td></tr>`;
     return;
   }
-  tablaAnalisisBody.innerHTML = productosCache
+  tablaAnalisisBody.innerHTML = productos
     .map((p) => {
       const resumen = resumenReceta(p.receta);
       const producible = producibleHoy(p.receta);

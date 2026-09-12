@@ -99,7 +99,12 @@ onSnapshot(query(materiasPrimasRef, orderBy("nombre")), (snapshot) => {
 
 const tablaProduccionBody = document.getElementById("tabla-produccion-body");
 
+const inputBuscadorProduccion = document.getElementById("produccion-buscador");
+inputBuscadorProduccion.addEventListener("input", renderTablaProduccion);
+
 function renderTablaProduccion() {
+  const texto = inputBuscadorProduccion.value.trim().toLowerCase();
+
   const filasProduccion = produccionCache
     .filter((p) => p.fechaInicio)
     .map((p) => ({ ...p, tipo: "produccion", fechaOrden: p.fechaInicio }));
@@ -107,13 +112,18 @@ function renderTablaProduccion() {
     .filter((d) => d.fecha)
     .map((d) => ({ ...d, tipo: "descarte", fechaOrden: d.fecha }));
 
-  const combinado = [...filasProduccion, ...filasDescarte]
-    .sort((a, b) => b.fechaOrden.toMillis() - a.fechaOrden.toMillis())
-    .slice(0, 10);
+  let combinado = [...filasProduccion, ...filasDescarte].sort((a, b) => b.fechaOrden.toMillis() - a.fechaOrden.toMillis());
+
+  if (texto) {
+    combinado = combinado.filter((f) => nombreProducto(f.productoId).toLowerCase().includes(texto)).slice(0, 50);
+  } else {
+    combinado = combinado.slice(0, 10);
+  }
 
   if (combinado.length === 0) {
-    tablaProduccionBody.innerHTML =
-      '<tr><td colspan="7" class="fila-vacia">Todavía no hay producción registrada.</td></tr>';
+    tablaProduccionBody.innerHTML = `<tr><td colspan="7" class="fila-vacia">${
+      texto ? "No hay producción que coincida con la búsqueda." : "Todavía no hay producción registrada."
+    }</td></tr>`;
     return;
   }
 
@@ -156,12 +166,12 @@ function renderTablaProduccion() {
     .join("");
 }
 
-onSnapshot(query(movimientosProduccionRef, orderBy("fechaInicio", "desc"), limit(10)), (snapshot) => {
+onSnapshot(query(movimientosProduccionRef, orderBy("fechaInicio", "desc"), limit(500)), (snapshot) => {
   produccionCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderTablaProduccion();
 });
 
-onSnapshot(query(movimientosDescarteRef, orderBy("fecha", "desc"), limit(10)), (snapshot) => {
+onSnapshot(query(movimientosDescarteRef, orderBy("fecha", "desc"), limit(500)), (snapshot) => {
   descarteCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderTablaProduccion();
 });

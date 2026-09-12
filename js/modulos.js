@@ -161,12 +161,20 @@ function equivalentesHoy(composicion) {
   return minimo === Infinity ? null : Math.floor(minimo);
 }
 
+const inputBuscadorConjuntos = document.getElementById("conjuntos-buscador");
+inputBuscadorConjuntos.addEventListener("input", renderTablaModulos);
+
 function renderTablaModulos() {
-  if (modulosCache.length === 0) {
-    tablaModulosBody.innerHTML = '<tr><td colspan="6" class="fila-vacia">Todavía no cargaste ningún conjunto.</td></tr>';
+  const texto = inputBuscadorConjuntos.value.trim().toLowerCase();
+  const modulos = texto ? modulosCache.filter((m) => m.nombre.toLowerCase().includes(texto)) : modulosCache;
+
+  if (modulos.length === 0) {
+    tablaModulosBody.innerHTML = `<tr><td colspan="6" class="fila-vacia">${
+      texto ? "No hay conjuntos que coincidan con la búsqueda." : "Todavía no cargaste ningún conjunto."
+    }</td></tr>`;
     return;
   }
-  tablaModulosBody.innerHTML = modulosCache
+  tablaModulosBody.innerHTML = modulos
     .map((m) => {
       const resumen = resumenComposicion(m.composicion);
       const equivalentes = equivalentesHoy(m.composicion);

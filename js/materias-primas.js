@@ -42,11 +42,16 @@ const formatoFecha = new Intl.DateTimeFormat("es-AR", {
 // =====================================================================
 
 const tablaMaterialesBody = document.getElementById("tabla-materiales-body");
+const inputBuscadorElementos = document.getElementById("elementos-buscador");
 
-function renderTablaMateriales(materiales) {
+function renderTablaMateriales() {
+  const texto = inputBuscadorElementos.value.trim().toLowerCase();
+  const materiales = texto ? materialesCache.filter((m) => m.nombre.toLowerCase().includes(texto)) : materialesCache;
+
   if (materiales.length === 0) {
-    tablaMaterialesBody.innerHTML =
-      '<tr><td colspan="5" class="fila-vacia">Todavía no cargaste ningún elemento.</td></tr>';
+    tablaMaterialesBody.innerHTML = `<tr><td colspan="5" class="fila-vacia">${
+      texto ? "No hay elementos que coincidan con la búsqueda." : "Todavía no cargaste ningún elemento."
+    }</td></tr>`;
     return;
   }
   tablaMaterialesBody.innerHTML = materiales
@@ -65,6 +70,7 @@ function renderTablaMateriales(materiales) {
     )
     .join("");
 }
+inputBuscadorElementos.addEventListener("input", renderTablaMateriales);
 
 function opcionesElementos() {
   return (
@@ -87,7 +93,7 @@ function refrescarSelectsLineasCompra() {
 
 onSnapshot(query(materiasPrimasRef, orderBy("nombre")), (snapshot) => {
   materialesCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-  renderTablaMateriales(materialesCache);
+  renderTablaMateriales();
   refrescarSelectsLineasCompra();
   renderTablaCompras();
 });
@@ -479,13 +485,25 @@ function resumenItemsCompra(items) {
   return items.map((it) => `${nombreMaterial(it.materiaId)} (${formatoNumero.format(it.cantidad)})`).join(", ");
 }
 
+const inputBuscadorCompras = document.getElementById("compras-buscador");
+inputBuscadorCompras.addEventListener("input", renderTablaCompras);
+
 function renderTablaCompras() {
-  if (comprasCache.length === 0) {
-    tablaComprasBody.innerHTML =
-      '<tr><td colspan="6" class="fila-vacia">Todavía no hay compras registradas.</td></tr>';
+  const texto = inputBuscadorCompras.value.trim().toLowerCase();
+  const compras = texto
+    ? comprasCache.filter((c) => {
+        const bolsa = `${resumenItemsCompra(c.items || [])} ${nombreProveedor(c.proveedorId)}`.toLowerCase();
+        return bolsa.includes(texto);
+      })
+    : comprasCache;
+
+  if (compras.length === 0) {
+    tablaComprasBody.innerHTML = `<tr><td colspan="6" class="fila-vacia">${
+      texto ? "No hay compras que coincidan con la búsqueda." : "Todavía no hay compras registradas."
+    }</td></tr>`;
     return;
   }
-  tablaComprasBody.innerHTML = comprasCache
+  tablaComprasBody.innerHTML = compras
     .map((c) => {
       const fecha = c.fecha ? formatoFecha.format(c.fecha.toDate()) : "—";
       const resumen = resumenItemsCompra(c.items || []);
