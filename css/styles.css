@@ -164,7 +164,8 @@ button {
 
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-sidebar {
@@ -175,9 +176,6 @@ button {
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
   height: 100vh;
   overflow-y: auto;
 }
@@ -273,6 +271,8 @@ button {
   flex-grow: 1;
   padding: 32px 28px;
   min-width: 0;
+  height: 100vh;
+  overflow-y: auto;
   overflow-x: auto;
 }
 
@@ -344,6 +344,20 @@ button {
 
   .app-contenido {
     padding: 24px 16px 100px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .app-shell {
+    height: auto;
+    overflow: visible;
+  }
+
+  .cabecera-fija {
+    position: static;
+    margin: 0 0 8px;
+    padding: 0;
+    box-shadow: none;
   }
 
   .encabezado-seccion {
@@ -1155,11 +1169,13 @@ button {
 
 .cabecera-fija {
   position: sticky;
-  top: 0;
+  top: -32px;              /* compensa el padding superior del panel */
   z-index: 40;
   background: var(--bg);
-  padding-top: 4px;
-  margin-bottom: 4px;
+  padding-top: 32px;
+  margin: -32px -28px 8px;
+  padding-left: 28px;
+  padding-right: 28px;
   box-shadow: 0 6px 10px -8px rgba(28, 32, 36, 0.35);
 }
 
@@ -1170,14 +1186,6 @@ button {
 
 .cabecera-fija .buscador-tabla {
   margin-bottom: 10px;
-}
-
-/* La primera fila de encabezados de tabla también queda pegada,
-   justo debajo de la cabecera fija. */
-.tabla-datos thead th {
-  position: sticky;
-  top: 0;
-  z-index: 20;
 }
 
 /* ---------- Agrupación por mes en listados largos ---------- */
