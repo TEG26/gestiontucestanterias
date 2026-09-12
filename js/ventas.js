@@ -689,6 +689,7 @@ function abrirModalRemito(ventaId) {
   const venta = ventasCache.find((v) => v.id === ventaId);
   if (!venta) return;
 
+  ventaImprimiendo = venta;
   remitoNumero.textContent = venta.id.slice(-6).toUpperCase();
   remitoCliente.textContent = venta.cliente;
   remitoFecha.textContent = venta.fecha ? formatoFecha.format(venta.fecha.toDate()) : "—";
@@ -709,8 +710,26 @@ function abrirModalRemito(ventaId) {
 const contenidoRemito = document.getElementById("contenido-remito");
 const areaImpresion = document.getElementById("area-impresion");
 
+let ventaImprimiendo = null;
+
 btnImprimirRemito.addEventListener("click", () => {
   areaImpresion.innerHTML = contenidoRemito.innerHTML;
+
+  // El navegador usa el título de la página como nombre sugerido al
+  // guardar como PDF, así que se cambia momentáneamente y se restaura
+  // cuando el diálogo se cierra.
+  const tituloOriginal = document.title;
+  if (ventaImprimiendo) {
+    const numero = ventaImprimiendo.id.slice(-6).toUpperCase();
+    document.title = `TucEstanterias - Remito N ${numero} - ${ventaImprimiendo.cliente}`;
+  }
+  window.addEventListener(
+    "afterprint",
+    () => {
+      document.title = tituloOriginal;
+    },
+    { once: true }
+  );
   window.print();
 });
 

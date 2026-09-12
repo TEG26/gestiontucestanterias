@@ -410,14 +410,27 @@ const tablaBalanceBody = document.getElementById("tabla-balance-body");
 const tablaIvaBody = document.getElementById("tabla-iva-body");
 const tablaDesgloseBody = document.getElementById("tabla-desglose-body");
 const inputDesgloseMes = document.getElementById("desglose-mes");
+const inputIndicadoresMes = document.getElementById("indicadores-mes");
+const grillaIndicadores = document.getElementById("grilla-indicadores");
+const alertasIndicadores = document.getElementById("alertas-indicadores");
+const graficoEvolucion = document.getElementById("grafico-evolucion");
+const graficoCategorias = document.getElementById("grafico-categorias");
+
+let mesesCalculados = {};
+let clavesCalculadas = [];
 
 inputDesgloseMes.value = claveMes(new Date());
 inputDesgloseMes.addEventListener("input", renderTablaDesglose);
+inputIndicadoresMes.value = claveMes(new Date());
+inputIndicadoresMes.addEventListener("input", () => {
+  renderIndicadores();
+  renderGraficoCategorias();
+});
 
 function recalcularTodo() {
   const meses = {};
   function obtenerMes(key) {
-    if (!meses[key]) meses[key] = { ingresos: 0, egresosGeneral: 0, egresosMateriaPrima: 0, ivaVentas: 0, ivaCompras: 0 };
+    if (!meses[key]) meses[key] = { ingresos: 0, egresosGeneral: 0, egresosMateriaPrima: 0, ivaVentas: 0, ivaCompras: 0, cantidadVentas: 0 };
     return meses[key];
   }
 
@@ -426,6 +439,7 @@ function recalcularTodo() {
     const m = obtenerMes(claveMes(v.fecha.toDate()));
     m.ingresos += v.montoTotal || 0;
     m.ivaVentas += v.ivaTotal || 0;
+    m.cantidadVentas += 1;
   });
   comprasCache.forEach((c) => {
     if (!c.fecha) return;
@@ -440,9 +454,14 @@ function recalcularTodo() {
   });
 
   const claves = Object.keys(meses).sort();
+  mesesCalculados = meses;
+  clavesCalculadas = claves;
   renderTablaBalance(claves, meses);
   renderTablaIva(claves, meses);
   renderTablaDesglose();
+  renderIndicadores();
+  renderGraficoEvolucion();
+  renderGraficoCategorias();
 }
 
 function renderTablaBalance(claves, meses) {
@@ -518,6 +537,210 @@ function renderTablaDesglose() {
   }
   tablaDesgloseBody.innerHTML = filas
     .map((f) => `<tr><td>${escapeHtml(f.nombre)}</td><td class="col-numero">${formatoMoneda.format(f.monto)}</td></tr>`)
+    .join("");
+}
+
+// =====================================================================
+// Indicadores y gráficos
+// =====================================================================
+
+function datosDelMes(clave) {
+  return mesesCalculados[clave] || { ingresos: 0, egresosGeneral: 0, egresosMateriaPrima: 0, ivaVentas: 0, ivaCompras: 0, cantidadVentas: 0 };
+}
+
+function porcentaje(valor, base) {
+  if (!base) return null;
+  return (valor / base) * 100;
+}
+
+function formatoPorcentaje(p) {
+  return p === null ? "—" : `${formatoNumero.format(p)}%`;
+}
+
+function renderIndicadores() {
+  const mes = inputIndicadoresMes.value || claveMes(new Date());
+  const d = datosDelMes(mes);
+  const egresosTotal = d.egresosGeneral + d.egresosMateriaPrima;
+  const resultado = d.ingresos - egresosTotal;
+
+  // Margen: qué porción de cada peso vendido queda después de todos los
+  // gastos del mes. Es margen sobre lo efectivamente facturado, no un
+  // margen por producto.
+  const margen = porcentaje(resultado, d.ingresos);
+  // Peso de la materia prima sobre las ventas: si sube mes a mes,
+  // significa que el costo de producir se está comiendo el precio.
+  const pesoMateriaPrima = porcentaje(d.egresosMateriaPrima, d.ingresos);
+  const ticketPromedio = d.cantidadVentas > 0 ? d.ingresos / d.cantidadVentas : null;
+  const saldoIva = d.ivaVentas - d.ivaCompras;
+
+  // Comparación contra el mes anterior con datos
+  const indiceMes = clavesCalculadas.indexOf(mes);
+  const mesAnterior = indiceMes > 0 ? clavesCalculadas[indiceMes - 1] : null;
+  const dAnterior = mesAnterior ? datosDelMes(mesAnterior) : null;
+  const variacionIngresos = dAnterior && dAnterior.ingresos ? porcentaje(d.ingresos - dAnterior.ingresos, dAnterior.ingresos) : null;
+
+  const tarjetas = [
+    {
+      etiqueta: "Ingresos del mes",
+      valor: formatoMoneda.format(d.ingresos),
+      detalle:
+        variacionIngresos === null
+          ? `${d.cantidadVentas} venta(s)`
+          : `${variacionIngresos >= 0 ? "▲" : "▼"} ${formatoPorcentaje(Math.abs(variacionIngresos))} vs mes anterior`
+    },
+    { etiqueta: "Egresos del mes", valor: formatoMoneda.format(egresosTotal), detalle: `Materia prima: ${formatoMoneda.format(d.egresosMateriaPrima)}` },
+    {
+      etiqueta: "Resultado del mes",
+      valor: formatoMoneda.format(resultado),
+      clase: resultado >= 0 ? "positivo" : "negativo",
+      detalle: `Margen: ${formatoPorcentaje(margen)}`
+    },
+    {
+      etiqueta: "Peso de materia prima",
+      valor: formatoPorcentaje(pesoMateriaPrima),
+      detalle: "Sobre los ingresos del mes"
+    },
+    {
+      etiqueta: "Ticket promedio",
+      valor: ticketPromedio === null ? "—" : formatoMoneda.format(ticketPromedio),
+      detalle: `${d.cantidadVentas} venta(s) registradas`
+    },
+    {
+      etiqueta: "Saldo de IVA",
+      valor: formatoMoneda.format(saldoIva),
+      clase: saldoIva > 0 ? "negativo" : "positivo",
+      detalle: saldoIva > 0 ? "A pagar" : "A favor"
+    }
+  ];
+
+  grillaIndicadores.innerHTML = tarjetas
+    .map(
+      (t) => `
+      <div class="tarjeta-indicador">
+        <p class="etiqueta">${escapeHtml(t.etiqueta)}</p>
+        <p class="valor ${t.clase || ""}">${t.valor}</p>
+        <p class="detalle">${escapeHtml(t.detalle)}</p>
+      </div>`
+    )
+    .join("");
+
+  renderAlertas(mes, d, { resultado, margen, pesoMateriaPrima, variacionIngresos });
+}
+
+// Detecta situaciones que conviene mirar de cerca. No son diagnósticos
+// automáticos: son señales para revisar si el dato está bien cargado o
+// si efectivamente algo cambió en el negocio.
+function renderAlertas(mes, d, { resultado, margen, pesoMateriaPrima, variacionIngresos }) {
+  const alertas = [];
+
+  if (d.ingresos === 0 && (d.egresosGeneral > 0 || d.egresosMateriaPrima > 0)) {
+    alertas.push({ grave: true, texto: "Hay gastos cargados este mes pero ninguna venta registrada. Revisá si faltan cargar ventas." });
+  }
+  if (resultado < 0 && d.ingresos > 0) {
+    alertas.push({ grave: true, texto: `El mes cerró en pérdida (${formatoMoneda.format(resultado)}). Los egresos superaron a los ingresos.` });
+  }
+  if (margen !== null && margen >= 0 && margen < 10) {
+    alertas.push({ grave: false, texto: `Margen muy ajustado (${formatoPorcentaje(margen)}). Puede convenir revisar precios de venta.` });
+  }
+  if (pesoMateriaPrima !== null && pesoMateriaPrima > 70) {
+    alertas.push({ grave: false, texto: `La materia prima representa ${formatoPorcentaje(pesoMateriaPrima)} de los ingresos. Puede ser una compra grande de stock, o precios de venta desactualizados.` });
+  }
+  if (variacionIngresos !== null && variacionIngresos < -30) {
+    alertas.push({ grave: false, texto: `Los ingresos cayeron ${formatoPorcentaje(Math.abs(variacionIngresos))} respecto del mes anterior.` });
+  }
+
+  const egresosSinFactura = egresosCache.filter((e) => e.fecha && claveMes(e.fecha.toDate()) === mes && !e.tieneFactura);
+  if (egresosSinFactura.length > 0) {
+    const total = egresosSinFactura.reduce((acc, e) => acc + (e.monto || 0), 0);
+    alertas.push({ grave: false, texto: `${egresosSinFactura.length} egreso(s) sin factura por ${formatoMoneda.format(total)} — no generan crédito fiscal.` });
+  }
+
+  alertasIndicadores.innerHTML = alertas
+    .map((a) => `<div class="alerta-indicador ${a.grave ? "grave" : ""}">${escapeHtml(a.texto)}</div>`)
+    .join("");
+}
+
+// Gráfico de barras de ingresos vs egresos por mes, dibujado como SVG
+// simple (sin librerías externas, para no sumar dependencias).
+function renderGraficoEvolucion() {
+  const claves = clavesCalculadas.slice(-12);
+  if (claves.length === 0) {
+    graficoEvolucion.innerHTML = '<p class="ayuda">Todavía no hay datos para graficar.</p>';
+    return;
+  }
+
+  const alto = 220;
+  const anchoGrupo = 70;
+  const ancho = Math.max(claves.length * anchoGrupo + 40, 320);
+  const maximo = Math.max(
+    ...claves.map((c) => {
+      const d = datosDelMes(c);
+      return Math.max(d.ingresos, d.egresosGeneral + d.egresosMateriaPrima);
+    }),
+    1
+  );
+
+  const barras = claves
+    .map((clave, i) => {
+      const d = datosDelMes(clave);
+      const egresosTotal = d.egresosGeneral + d.egresosMateriaPrima;
+      const x = 30 + i * anchoGrupo;
+      const altoIngresos = (d.ingresos / maximo) * (alto - 50);
+      const altoEgresos = (egresosTotal / maximo) * (alto - 50);
+      const etiqueta = clave.split("-").reverse().join("/");
+      return `
+        <rect x="${x}" y="${alto - 30 - altoIngresos}" width="22" height="${altoIngresos}" fill="#2f7d5c"></rect>
+        <rect x="${x + 25}" y="${alto - 30 - altoEgresos}" width="22" height="${altoEgresos}" fill="#b3432f"></rect>
+        <text x="${x + 23}" y="${alto - 12}" text-anchor="middle" font-size="10" fill="#5b6470">${etiqueta}</text>`;
+    })
+    .join("");
+
+  graficoEvolucion.innerHTML = `
+    <svg width="${ancho}" height="${alto}" viewBox="0 0 ${ancho} ${alto}" xmlns="http://www.w3.org/2000/svg">
+      <line x1="25" y1="${alto - 30}" x2="${ancho - 10}" y2="${alto - 30}" stroke="#d7d9dc"></line>
+      ${barras}
+    </svg>
+    <div class="grafico-leyenda">
+      <span><i style="background:#2f7d5c"></i> Ingresos</span>
+      <span><i style="background:#b3432f"></i> Egresos</span>
+    </div>`;
+}
+
+// Barras horizontales con el peso de cada categoría de gasto del mes.
+function renderGraficoCategorias() {
+  const mes = inputIndicadoresMes.value || claveMes(new Date());
+  const porCategoria = {};
+
+  egresosCache
+    .filter((e) => e.fecha && claveMes(e.fecha.toDate()) === mes)
+    .forEach((e) => {
+      porCategoria[nombreCategoria(e.categoriaId)] = (porCategoria[nombreCategoria(e.categoriaId)] || 0) + (e.monto || 0);
+    });
+
+  const totalMateriaPrima = comprasCache
+    .filter((c) => c.fecha && claveMes(c.fecha.toDate()) === mes)
+    .reduce((acc, c) => acc + (c.precioTotalConIva || 0), 0);
+  if (totalMateriaPrima > 0) porCategoria["Materia prima y materiales"] = totalMateriaPrima;
+
+  const filas = Object.entries(porCategoria).sort((a, b) => b[1] - a[1]);
+  if (filas.length === 0) {
+    graficoCategorias.innerHTML = '<p class="ayuda">Sin gastos cargados para ese mes.</p>';
+    return;
+  }
+  const total = filas.reduce((acc, [, monto]) => acc + monto, 0);
+
+  graficoCategorias.innerHTML = filas
+    .map(([nombre, monto]) => {
+      const pct = (monto / total) * 100;
+      return `
+      <div class="barra-categoria">
+        <div class="barra-etiqueta">
+          <span>${escapeHtml(nombre)}</span>
+          <span>${formatoMoneda.format(monto)} · ${formatoNumero.format(pct)}%</span>
+        </div>
+        <div class="barra-pista"><div class="barra-relleno" style="width:${pct}%"></div></div>
+      </div>`;
+    })
     .join("");
 }
 

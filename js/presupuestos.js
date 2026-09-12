@@ -615,6 +615,7 @@ function abrirModalImprimir(presupuestoId) {
   const presupuesto = presupuestosCache.find((p) => p.id === presupuestoId);
   if (!presupuesto) return;
 
+  presupuestoImprimiendo = presupuesto;
   impNumero.textContent = presupuesto.numero ? String(presupuesto.numero).padStart(6, "0") : presupuesto.id.slice(-6).toUpperCase();
   impFecha.textContent = presupuesto.fecha ? formatoFecha.format(presupuesto.fecha.toDate()) : "—";
   impCliente.textContent = presupuesto.cliente;
@@ -645,8 +646,28 @@ function abrirModalImprimir(presupuestoId) {
 const contenidoPresupuesto = document.getElementById("contenido-presupuesto");
 const areaImpresion = document.getElementById("area-impresion");
 
+let presupuestoImprimiendo = null;
+
 btnImprimirPresupuesto.addEventListener("click", () => {
   areaImpresion.innerHTML = contenidoPresupuesto.innerHTML;
+
+  // El navegador usa el título de la página como nombre sugerido al
+  // guardar como PDF, así que se cambia momentáneamente y se restaura
+  // cuando el diálogo se cierra.
+  const tituloOriginal = document.title;
+  if (presupuestoImprimiendo) {
+    const numero = presupuestoImprimiendo.numero
+      ? String(presupuestoImprimiendo.numero).padStart(6, "0")
+      : presupuestoImprimiendo.id.slice(-6).toUpperCase();
+    document.title = `TucEstanterias - Presupuesto N ${numero} - ${presupuestoImprimiendo.cliente}`;
+  }
+  window.addEventListener(
+    "afterprint",
+    () => {
+      document.title = tituloOriginal;
+    },
+    { once: true }
+  );
   window.print();
 });
 

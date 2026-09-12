@@ -279,6 +279,103 @@ button {
   font-size: 24px;
 }
 
+/* ---------- Celular: menú inferior fijo ---------- */
+
+@media (max-width: 760px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    z-index: 90;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .app-sidebar .logo-sidebar,
+  .app-sidebar .subtitulo,
+  .app-sidebar .app-usuario .nombre {
+    display: none;
+  }
+
+  .app-nav {
+    display: flex;
+    flex-grow: 1;
+    margin: 0;
+  }
+
+  .app-nav li {
+    margin: 0;
+    flex: 1;
+  }
+
+  .app-nav button {
+    text-align: center;
+    padding: 14px 8px;
+    font-size: 12px;
+    border-radius: 0;
+    white-space: nowrap;
+  }
+
+  .app-usuario {
+    border-top: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0 12px;
+    flex-shrink: 0;
+  }
+
+  .app-usuario button {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .app-contenido {
+    padding: 24px 16px 100px;
+  }
+
+  .encabezado-seccion {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .acciones-encabezado {
+    flex-wrap: wrap;
+  }
+
+  .tabla-datos {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal-tarjeta,
+  .modal-tarjeta-ancha,
+  .modal-tarjeta-documento {
+    max-width: 100%;
+    padding: 20px;
+  }
+
+  .filtros-listado {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
 .app-contenido .ayuda {
   color: var(--text-muted);
   max-width: 480px;
@@ -400,6 +497,22 @@ button {
 
 .modal-tarjeta-ancha {
   max-width: 480px;
+}
+
+.modal-tarjeta-documento {
+  max-width: 960px;
+}
+
+.doc-numero-box {
+  border: 2px solid var(--text);
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 30px;
+  align-self: center;
 }
 
 .lista-simple {
@@ -559,20 +672,8 @@ button {
 
 .doc-logo {
   width: 100%;
-  max-width: 200px;
+  max-width: 260px;
   height: auto;
-}
-
-.doc-numero-box {
-  border: 2px solid var(--text);
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 18px;
-  align-self: center;
 }
 
 .doc-datos-doc {
@@ -804,6 +905,116 @@ button {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
+}
+
+/* ---------- Indicadores y gráficos ---------- */
+
+.grilla-indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.tarjeta-indicador {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+
+.tarjeta-indicador .etiqueta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+}
+
+.tarjeta-indicador .valor {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.tarjeta-indicador .valor.positivo {
+  color: var(--success);
+}
+
+.tarjeta-indicador .valor.negativo {
+  color: var(--danger);
+}
+
+.tarjeta-indicador .detalle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 6px 0 0;
+}
+
+.alerta-indicador {
+  border-left: 4px solid var(--accent);
+  background: #fdf1e7;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.alerta-indicador.grave {
+  border-left-color: var(--danger);
+  background: #fbecea;
+}
+
+.grafico-contenedor {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.grafico-leyenda {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.grafico-leyenda span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grafico-leyenda i {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+}
+
+.barra-categoria {
+  margin-bottom: 10px;
+}
+
+.barra-categoria .barra-etiqueta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.barra-categoria .barra-etiqueta span:last-child {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.barra-categoria .barra-pista {
+  background: var(--bg);
+  height: 14px;
+  border: 1px solid var(--border);
+}
+
+.barra-categoria .barra-relleno {
+  background: var(--steel);
+  height: 100%;
 }
 
 /* ---------- Modales ---------- */

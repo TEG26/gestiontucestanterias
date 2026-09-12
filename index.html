@@ -365,14 +365,32 @@
     <main class="app-contenido" id="panel-egresos-balance" hidden>
       <div class="encabezado-seccion">
         <div>
-          <h1>Balance</h1>
+          <h1>Estado del negocio</h1>
           <p class="ayuda">
-            Se calcula solo, mes a mes, a partir de lo cargado en Ventas,
-            Compras y Egresos — nada se ajusta a mano.
+            Indicadores calculados sobre lo cargado en Ventas, Compras y
+            Egresos. Sirven para ver tendencias, no reemplazan una
+            mirada contable.
           </p>
+        </div>
+        <div class="acciones-encabezado">
+          <label class="label-inline">
+            Mes a analizar
+            <input type="month" id="indicadores-mes" />
+          </label>
         </div>
       </div>
 
+      <div class="grilla-indicadores" id="grilla-indicadores"></div>
+
+      <div id="alertas-indicadores"></div>
+
+      <h2 class="subtitulo-seccion">Evolución mensual</h2>
+      <div class="grafico-contenedor" id="grafico-evolucion"></div>
+
+      <h2 class="subtitulo-seccion">Composición de gastos del mes</h2>
+      <div class="grafico-contenedor" id="grafico-categorias"></div>
+
+      <h2 class="subtitulo-seccion">Balance mes a mes</h2>
       <table class="tabla-datos">
         <thead>
           <tr>
@@ -596,7 +614,7 @@
 
   <!-- Modal: remito -->
   <div id="modal-remito" class="modal-overlay" hidden>
-    <div class="modal-tarjeta modal-tarjeta-ancha doc-imprimible" id="contenido-remito">
+    <div class="modal-tarjeta modal-tarjeta-documento doc-imprimible" id="contenido-remito">
       <div class="doc-encabezado">
         <img src="assets/logo.png" alt="Tucumán Estanterías" class="doc-logo" />
         <div class="doc-numero-box">R</div>
@@ -719,7 +737,7 @@
 
   <!-- Modal: imprimir presupuesto -->
   <div id="modal-imprimir-presupuesto" class="modal-overlay" hidden>
-    <div class="modal-tarjeta modal-tarjeta-ancha doc-imprimible" id="contenido-presupuesto">
+    <div class="modal-tarjeta modal-tarjeta-documento doc-imprimible" id="contenido-presupuesto">
       <div class="doc-encabezado">
         <img src="assets/logo.png" alt="Tucumán Estanterías" class="doc-logo" />
         <div class="doc-numero-box">P</div>
