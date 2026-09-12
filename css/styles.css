@@ -526,27 +526,21 @@ button {
   font-size: 13px;
 }
 
+#area-impresion {
+  display: none;
+}
+
 @media print {
   @page {
     size: A4;
     margin: 15mm;
   }
-  body * {
-    visibility: hidden;
+  body > *:not(#area-impresion) {
+    display: none !important;
   }
-  .doc-imprimible,
-  .doc-imprimible * {
-    visibility: visible;
-  }
-  .doc-imprimible {
-    position: absolute;
-    inset: 0;
-    width: auto;
-    max-height: none;
-    max-width: none;
-    box-shadow: none;
-    border: none;
-    padding: 0;
+  #area-impresion {
+    display: block !important;
+    width: 100%;
   }
   .no-imprimir {
     display: none !important;

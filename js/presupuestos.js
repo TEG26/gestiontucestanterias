@@ -642,7 +642,11 @@ function abrirModalImprimir(presupuestoId) {
   abrirModal(modalImprimir);
 }
 
+const contenidoPresupuesto = document.getElementById("contenido-presupuesto");
+const areaImpresion = document.getElementById("area-impresion");
+
 btnImprimirPresupuesto.addEventListener("click", () => {
+  areaImpresion.innerHTML = contenidoPresupuesto.innerHTML;
   window.print();
 });
 

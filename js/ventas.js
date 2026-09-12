@@ -706,7 +706,11 @@ function abrirModalRemito(ventaId) {
   abrirModal(modalRemito);
 }
 
+const contenidoRemito = document.getElementById("contenido-remito");
+const areaImpresion = document.getElementById("area-impresion");
+
 btnImprimirRemito.addEventListener("click", () => {
+  areaImpresion.innerHTML = contenidoRemito.innerHTML;
   window.print();
 });
 
