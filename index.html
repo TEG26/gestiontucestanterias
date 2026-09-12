@@ -50,7 +50,7 @@
         <li><button class="activo" id="nav-stock-produccion">Stock y Producción</button></li>
         <li><button id="nav-analisis-produccion">Análisis de producción</button></li>
         <li><button id="nav-ventas-presupuestos">Ventas y Presupuestos</button></li>
-        <li><button disabled title="Próximamente">Egresos y Balance</button></li>
+        <li><button id="nav-egresos-balance">Egresos y Balance</button></li>
       </ul>
 
       <div class="app-usuario">
@@ -341,6 +341,7 @@
       <table class="tabla-datos">
         <thead>
           <tr>
+            <th>Nº</th>
             <th>Fecha</th>
             <th>Cliente</th>
             <th>Ítems</th>
@@ -350,10 +351,189 @@
           </tr>
         </thead>
         <tbody id="tabla-presupuestos-body">
-          <tr><td colspan="6" class="fila-vacia">Cargando...</td></tr>
+          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
     </main>
+
+    <main class="app-contenido" id="panel-egresos-balance" hidden>
+      <div class="encabezado-seccion">
+        <div>
+          <h1>Balance</h1>
+          <p class="ayuda">
+            Se calcula solo, mes a mes, a partir de lo cargado en Ventas,
+            Compras y Egresos — nada se ajusta a mano.
+          </p>
+        </div>
+      </div>
+
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Mes</th>
+            <th class="col-numero">Ingresos</th>
+            <th class="col-numero">Egresos</th>
+            <th class="col-numero">Resultado</th>
+            <th class="col-numero">Acumulado</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-balance-body">
+          <tr><td colspan="5" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+
+      <div class="encabezado-seccion encabezado-seccion-separado">
+        <div>
+          <h2 class="subtitulo-seccion sin-margen-superior">Desglose de gastos por categoría</h2>
+        </div>
+        <div class="acciones-encabezado">
+          <label class="label-inline">
+            Mes
+            <input type="month" id="desglose-mes" />
+          </label>
+        </div>
+      </div>
+
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Categoría</th>
+            <th class="col-numero">Monto</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-desglose-body">
+          <tr><td colspan="2" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="subtitulo-seccion">Evolución de IVA</h2>
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Mes</th>
+            <th class="col-numero">IVA ventas (débito)</th>
+            <th class="col-numero">IVA compras (crédito)</th>
+            <th class="col-numero">Diferencia</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-iva-body">
+          <tr><td colspan="4" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+
+      <div class="encabezado-seccion encabezado-seccion-separado">
+        <div>
+          <h2 class="subtitulo-seccion sin-margen-superior">Egresos</h2>
+          <p class="ayuda">
+            La compra de materia prima ya se registra en Elementos — acá
+            van los demás gastos del negocio.
+          </p>
+        </div>
+        <div class="acciones-encabezado">
+          <button id="btn-abrir-categorias" class="boton-secundario boton-chico">
+            Categorías
+          </button>
+          <button id="btn-abrir-egreso" class="boton-primario boton-chico">
+            + Nuevo egreso
+          </button>
+        </div>
+      </div>
+
+      <div class="filtros-listado">
+        <label>
+          Mes
+          <input type="month" id="egresos-filtro-mes" />
+        </label>
+        <label>
+          Categoría
+          <select id="egresos-filtro-categoria">
+            <option value="">Todas</option>
+          </select>
+        </label>
+        <label>
+          Buscar
+          <input type="text" id="egresos-filtro-texto" placeholder="Descripción" />
+        </label>
+        <button type="button" id="btn-limpiar-filtros-egresos" class="boton-secundario boton-chico">Limpiar</button>
+      </div>
+
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Categoría</th>
+            <th>Descripción</th>
+            <th class="col-numero">Monto</th>
+            <th>Medio de pago</th>
+            <th>Factura</th>
+            <th class="col-acciones"></th>
+          </tr>
+        </thead>
+        <tbody id="tabla-egresos-body">
+          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <!-- Modal: categorías de gasto -->
+  <div id="modal-categorias-gasto" class="modal-overlay" hidden>
+    <div class="modal-tarjeta modal-tarjeta-ancha">
+      <h3>Categorías de gasto</h3>
+      <ul id="lista-categorias-gasto" class="lista-simple">
+        <li class="fila-vacia">Cargando...</li>
+      </ul>
+      <form id="form-nueva-categoria-gasto">
+        <label>
+          <span id="form-categoria-etiqueta">Nueva categoría</span>
+          <input type="text" id="nueva-categoria-nombre" placeholder="Ej: Seguros" required />
+        </label>
+        <p class="error-form" id="error-categoria-gasto" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-edicion-categoria" class="boton-secundario boton-chico" hidden>Cancelar edición</button>
+          <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-categorias-gasto">Cerrar</button>
+          <button type="submit" id="btn-guardar-categoria-gasto" class="boton-primario boton-chico">Crear</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: nuevo/editar egreso -->
+  <div id="modal-egreso" class="modal-overlay" hidden>
+    <form id="form-egreso" class="modal-tarjeta">
+      <h3 id="titulo-modal-egreso">Nuevo egreso</h3>
+      <label>
+        Fecha
+        <input type="date" id="egreso-fecha" required />
+      </label>
+      <label>
+        Categoría
+        <select id="egreso-categoria" required>
+          <option value="" disabled selected>Elegir categoría...</option>
+        </select>
+      </label>
+      <label>
+        Descripción
+        <input type="text" id="egreso-descripcion" placeholder="Ej: Factura de luz del galpón" required />
+      </label>
+      <label>
+        Monto
+        <input type="number" id="egreso-monto" min="0" step="any" required />
+      </label>
+      <label>
+        Medio de pago
+        <input type="text" id="egreso-medio-pago" list="lista-medios-pago" placeholder="Ej: Transferencia" required />
+      </label>
+      <label class="label-checkbox">
+        <input type="checkbox" id="egreso-tiene-factura" />
+        Tiene factura
+      </label>
+      <p class="error-form" id="error-egreso" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" class="boton-secundario boton-chico" data-cerrar-modal="modal-egreso">Cancelar</button>
+        <button type="submit" id="btn-guardar-egreso" class="boton-primario boton-chico">Registrar</button>
+      </div>
+    </form>
   </div>
 
   <!-- Modal: nueva venta -->
@@ -423,7 +603,7 @@
       <div class="doc-info-empresa">
         <p>Tucumán Estanterías</p>
         <p>Razón social: FACTORY HOLDING S.A.S</p>
-        <p>CUIT: </p>
+        <p>CUIT: 30-71779378-8</p>
         <p>25 de Mayo 1763</p>
         <p>4000 San Miguel de Tucumán</p>
         <p>ARGENTINA</p>
@@ -546,7 +726,7 @@
       <div class="doc-info-empresa">
         <p>Tucumán Estanterías</p>
         <p>Razón social: FACTORY HOLDING S.A.S</p>
-        <p>CUIT: </p>
+        <p>CUIT: 30-71779378-8</p>
         <p>25 de Mayo 1763</p>
         <p>4000 San Miguel de Tucumán</p>
         <p>ARGENTINA</p>
@@ -905,5 +1085,6 @@
   <script type="module" src="js/analisis-produccion.js"></script>
   <script type="module" src="js/ventas.js"></script>
   <script type="module" src="js/presupuestos.js"></script>
+  <script type="module" src="js/egresos.js"></script>
 </body>
 </html>

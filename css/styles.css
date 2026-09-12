@@ -762,10 +762,28 @@ button {
   color: var(--text-muted);
 }
 
-.filtros-listado input {
+.filtros-listado input,
+.filtros-listado select {
   display: block;
   width: 100%;
   min-width: 160px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.label-inline {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.label-inline input,
+.label-inline select {
+  display: block;
   margin-top: 4px;
   padding: 8px 10px;
   font-size: 13px;

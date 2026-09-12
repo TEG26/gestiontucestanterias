@@ -1,7 +1,6 @@
 import { db, auth } from "./firebase-config.js";
 import {
   collection,
-  addDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -18,6 +17,7 @@ const ventasRef = collection(db, "ventas");
 const productosRef = collection(db, "productos");
 const modulosRef = collection(db, "modulos");
 const materiasPrimasRef = collection(db, "materiasPrimas");
+const contadorPresupuestosRef = doc(db, "contadores", "presupuestos");
 
 const TASA_IVA = 0.21;
 
@@ -127,7 +127,7 @@ function renderTablaPresupuestos() {
   const presupuestosFiltrados = aplicarFiltrosPresupuestos(presupuestosCache);
   if (presupuestosFiltrados.length === 0) {
     tablaPresupuestosBody.innerHTML =
-      '<tr><td colspan="6" class="fila-vacia">No hay presupuestos que coincidan con el filtro.</td></tr>';
+      '<tr><td colspan="7" class="fila-vacia">No hay presupuestos que coincidan con el filtro.</td></tr>';
     return;
   }
   tablaPresupuestosBody.innerHTML = presupuestosFiltrados
@@ -137,6 +137,7 @@ function renderTablaPresupuestos() {
       const convertido = p.estado === "convertido";
       return `
       <tr>
+        <td>${p.numero ? formatoNumero.format(p.numero) : "—"}</td>
         <td>${fecha}</td>
         <td>${escapeHtml(p.cliente)}</td>
         <td><span class="receta-resumen" title="${escapeHtml(resumen)}">${escapeHtml(resumen)}</span></td>
@@ -425,13 +426,7 @@ btnGuardarPresupuesto.addEventListener("click", async () => {
     if (editandoPresupuestoId) {
       await updateDoc(doc(presupuestosRef, editandoPresupuestoId), { ...datos, actualizadoEn: serverTimestamp() });
     } else {
-      await addDoc(presupuestosRef, {
-        ...datos,
-        estado: "pendiente",
-        ventaGeneradaId: null,
-        creadoPor: auth.currentUser ? auth.currentUser.uid : null,
-        creadoEn: serverTimestamp()
-      });
+      await crearPresupuestoConNumero(datos);
     }
     cerrarModal(modalPresupuesto);
   } catch (error) {
@@ -442,6 +437,29 @@ btnGuardarPresupuesto.addEventListener("click", async () => {
     btnGuardarPresupuesto.disabled = false;
   }
 });
+
+// El número correlativo se asigna dentro de una transacción junto con
+// la creación del presupuesto: se lee el último número usado en
+// /contadores/presupuestos, se suma 1, y se escriben las dos cosas
+// atómicamente — así dos presupuestos creados al mismo tiempo nunca
+// pueden terminar con el mismo número.
+async function crearPresupuestoConNumero(datos) {
+  const nuevoRef = doc(presupuestosRef);
+  await runTransaction(db, async (tx) => {
+    const contadorSnap = await tx.get(contadorPresupuestosRef);
+    const siguienteNumero = (contadorSnap.exists() ? contadorSnap.data().ultimoNumero : 0) + 1;
+
+    tx.set(contadorPresupuestosRef, { ultimoNumero: siguienteNumero }, { merge: true });
+    tx.set(nuevoRef, {
+      ...datos,
+      numero: siguienteNumero,
+      estado: "pendiente",
+      ventaGeneradaId: null,
+      creadoPor: auth.currentUser ? auth.currentUser.uid : null,
+      creadoEn: serverTimestamp()
+    });
+  });
+}
 
 function calcularDesglosePresupuesto(items, condicionIva) {
   const total = items.reduce((acc, it) => acc + it.subtotal, 0);
@@ -597,7 +615,7 @@ function abrirModalImprimir(presupuestoId) {
   const presupuesto = presupuestosCache.find((p) => p.id === presupuestoId);
   if (!presupuesto) return;
 
-  impNumero.textContent = presupuesto.id.slice(-6).toUpperCase();
+  impNumero.textContent = presupuesto.numero ? String(presupuesto.numero).padStart(6, "0") : presupuesto.id.slice(-6).toUpperCase();
   impFecha.textContent = presupuesto.fecha ? formatoFecha.format(presupuesto.fecha.toDate()) : "—";
   impCliente.textContent = presupuesto.cliente;
 
