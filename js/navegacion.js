@@ -1,8 +1,11 @@
 const paneles = {
-  "nav-stock-produccion": document.getElementById("panel-stock-produccion"),
+  "nav-stock": document.getElementById("panel-stock"),
+  "nav-produccion": document.getElementById("panel-produccion"),
   "nav-analisis-produccion": document.getElementById("panel-analisis-produccion"),
-  "nav-ventas-presupuestos": document.getElementById("panel-ventas-presupuestos"),
-  "nav-egresos-balance": document.getElementById("panel-egresos-balance")
+  "nav-ventas": document.getElementById("panel-ventas"),
+  "nav-presupuestos": document.getElementById("panel-presupuestos"),
+  "nav-egresos": document.getElementById("panel-egresos"),
+  "nav-balance": document.getElementById("panel-balance")
 };
 
 Object.keys(paneles).forEach((idBoton) => {

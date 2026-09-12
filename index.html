@@ -47,10 +47,13 @@
       <p class="subtitulo">Factory Holding S.A.S.</p>
 
       <ul class="app-nav">
-        <li><button class="activo" id="nav-stock-produccion">Stock y Producción</button></li>
+        <li><button class="activo" id="nav-stock">Stock</button></li>
+        <li><button id="nav-produccion">Producción</button></li>
         <li><button id="nav-analisis-produccion">Análisis de producción</button></li>
-        <li><button id="nav-ventas-presupuestos">Ventas y Presupuestos</button></li>
-        <li><button id="nav-egresos-balance">Egresos y Balance</button></li>
+        <li><button id="nav-ventas">Ventas</button></li>
+        <li><button id="nav-presupuestos">Presupuestos</button></li>
+        <li><button id="nav-egresos">Egresos</button></li>
+        <li><button id="nav-balance">Balance</button></li>
       </ul>
 
       <div class="app-usuario">
@@ -59,13 +62,13 @@
       </div>
     </aside>
 
-    <main class="app-contenido" id="panel-stock-produccion">
+    <main class="app-contenido" id="panel-stock">
       <div class="encabezado-seccion">
         <div>
-          <h1>Materias primas</h1>
+          <h1>Stock</h1>
           <p class="ayuda">
-            Stock actual de insumos. Una compra suma stock y registra el
-            gasto en el mismo paso.
+            Elementos comprados, productos fabricados y conjuntos. Una
+            compra suma stock y registra el gasto en el mismo paso.
           </p>
         </div>
         <div class="acciones-encabezado">
@@ -81,6 +84,7 @@
         </div>
       </div>
 
+      <h2 class="subtitulo-seccion sin-margen-superior">Elementos</h2>
       <input type="text" id="elementos-buscador" class="buscador-tabla" placeholder="Buscar elemento..." />
       <table class="tabla-datos">
         <thead>
@@ -150,42 +154,6 @@
 
       <div class="encabezado-seccion encabezado-seccion-separado">
         <div>
-          <h2 class="subtitulo-seccion sin-margen-superior">Producción</h2>
-          <p class="ayuda">
-            Cargá la cantidad teórica y después confirmá cuánto entró
-            realmente — la diferencia queda como merma.
-          </p>
-        </div>
-        <div class="acciones-encabezado">
-          <button id="btn-abrir-descarte" class="boton-secundario boton-chico">
-            + Hecho con descarte
-          </button>
-          <button id="btn-abrir-produccion" class="boton-primario boton-chico">
-            + Nueva producción
-          </button>
-        </div>
-      </div>
-
-      <input type="text" id="produccion-buscador" class="buscador-tabla" placeholder="Buscar producto..." />
-      <table class="tabla-datos">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Producto</th>
-            <th>Tipo</th>
-            <th class="col-numero">Teórica</th>
-            <th class="col-numero">Real</th>
-            <th class="col-numero">Merma</th>
-            <th class="col-acciones"></th>
-          </tr>
-        </thead>
-        <tbody id="tabla-produccion-body">
-          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
-        </tbody>
-      </table>
-
-      <div class="encabezado-seccion encabezado-seccion-separado">
-        <div>
           <h2 class="subtitulo-seccion sin-margen-superior">Conjuntos</h2>
           <p class="ayuda">
             Combinan productos ya fabricados (piezas sueltas). Los
@@ -214,6 +182,42 @@
         </thead>
         <tbody id="tabla-modulos-body">
           <tr><td colspan="6" class="fila-vacia">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </main>
+
+    <main class="app-contenido" id="panel-produccion" hidden>
+      <h1>Producción</h1>
+      <p class="ayuda">
+        Cargá la cantidad teórica y después confirmá cuánto entró
+        realmente — la diferencia queda como merma.
+      </p>
+
+        <div class="acciones-encabezado">
+          <button id="btn-abrir-descarte" class="boton-secundario boton-chico">
+            + Hecho con descarte
+          </button>
+          <button id="btn-abrir-produccion" class="boton-primario boton-chico">
+            + Nueva producción
+          </button>
+        </div>
+      </div>
+
+      <input type="text" id="produccion-buscador" class="buscador-tabla" placeholder="Buscar producto..." />
+      <table class="tabla-datos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Producto</th>
+            <th>Tipo</th>
+            <th class="col-numero">Teórica</th>
+            <th class="col-numero">Real</th>
+            <th class="col-numero">Merma</th>
+            <th class="col-acciones"></th>
+          </tr>
+        </thead>
+        <tbody id="tabla-produccion-body">
+          <tr><td colspan="7" class="fila-vacia">Cargando...</td></tr>
         </tbody>
       </table>
     </main>
@@ -262,8 +266,7 @@
         <div id="analisis-consumo-filas"></div>
       </div>
     </main>
-
-    <main class="app-contenido" id="panel-ventas-presupuestos" hidden>
+    <main class="app-contenido" id="panel-ventas" hidden>
       <div class="encabezado-seccion">
         <div>
           <h1>Ventas</h1>
@@ -312,14 +315,16 @@
         </tbody>
       </table>
 
-      <div class="encabezado-seccion encabezado-seccion-separado">
-        <div>
-          <h2 class="subtitulo-seccion sin-margen-superior">Presupuestos</h2>
-          <p class="ayuda">
-            Mismos ítems y precios que una venta, más condiciones. Un
-            presupuesto aceptado se convierte en venta con un clic, sin
-            recargar nada.
-          </p>
+    </main>
+
+    <main class="app-contenido" id="panel-presupuestos" hidden>
+      <h1>Presupuestos</h1>
+      <p class="ayuda">
+        Mismos ítems y precios que una venta, más condiciones. Un
+        presupuesto aceptado se convierte en venta con un clic, sin
+        recargar nada.
+      </p>
+
         </div>
         <div class="acciones-encabezado">
           <button id="btn-abrir-presupuesto" class="boton-primario boton-chico">
@@ -362,7 +367,7 @@
       </table>
     </main>
 
-    <main class="app-contenido" id="panel-egresos-balance" hidden>
+    <main class="app-contenido" id="panel-balance" hidden>
       <div class="encabezado-seccion">
         <div>
           <h1>Estado del negocio</h1>
@@ -445,14 +450,15 @@
         </tbody>
       </table>
 
-      <div class="encabezado-seccion encabezado-seccion-separado">
-        <div>
-          <h2 class="subtitulo-seccion sin-margen-superior">Egresos</h2>
-          <p class="ayuda">
-            La compra de materia prima ya se registra en Elementos — acá
-            van los demás gastos del negocio.
-          </p>
-        </div>
+    </main>
+
+    <main class="app-contenido" id="panel-egresos" hidden>
+      <h1>Egresos</h1>
+      <p class="ayuda">
+        La compra de materia prima ya se registra en Stock — acá
+        van los demás gastos del negocio.
+      </p>
+
         <div class="acciones-encabezado">
           <button id="btn-abrir-categorias" class="boton-secundario boton-chico">
             Categorías
@@ -498,6 +504,7 @@
         </tbody>
       </table>
     </main>
+
   </div>
 
   <!-- Modal: categorías de gasto -->
