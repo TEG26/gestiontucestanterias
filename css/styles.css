@@ -271,7 +271,9 @@ button {
 
 .app-contenido {
   flex-grow: 1;
-  padding: 40px 48px;
+  padding: 32px 28px;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .app-contenido h1 {
@@ -445,8 +447,8 @@ button {
 .tabla-datos th,
 .tabla-datos td {
   text-align: left;
-  padding: 10px 16px;
-  font-size: 14px;
+  padding: 8px 10px;
+  font-size: 13px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -784,7 +786,7 @@ button {
 }
 
 .receta-resumen {
-  max-width: 260px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1135,4 +1137,69 @@ button {
 .tabla-datos td.insuficiente {
   color: var(--danger);
   font-weight: 600;
+}
+
+/* ---------- Acciones de fila más compactas ---------- */
+
+.tabla-datos .col-acciones {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.boton-accion-fila {
+  padding: 3px 4px;
+  font-size: 11px;
+}
+
+/* ---------- Encabezado fijo al hacer scroll ---------- */
+
+.cabecera-fija {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg);
+  padding-top: 4px;
+  margin-bottom: 4px;
+  box-shadow: 0 6px 10px -8px rgba(28, 32, 36, 0.35);
+}
+
+.cabecera-fija .encabezado-seccion,
+.cabecera-fija .filtros-listado {
+  margin-bottom: 10px;
+}
+
+.cabecera-fija .buscador-tabla {
+  margin-bottom: 10px;
+}
+
+/* La primera fila de encabezados de tabla también queda pegada,
+   justo debajo de la cabecera fija. */
+.tabla-datos thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+/* ---------- Agrupación por mes en listados largos ---------- */
+
+.fila-grupo-mes td {
+  background: var(--bg);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  border-top: 1px solid var(--border);
+}
+
+.fila-grupo-mes .flecha {
+  display: inline-block;
+  width: 14px;
+  color: var(--text-muted);
+}
+
+.fila-grupo-mes .resumen-grupo {
+  float: right;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 12px;
 }

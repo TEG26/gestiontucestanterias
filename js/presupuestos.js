@@ -147,7 +147,7 @@ function renderTablaPresupuestos() {
           <button type="button" class="boton-accion-fila" data-imprimir-presupuesto="${p.id}">Imprimir</button>
           ${
             convertido
-              ? ""
+              ? `<button type="button" class="boton-accion-fila peligro" data-revertir-presupuesto="${p.id}">Volver a pendiente</button>`
               : `<button type="button" class="boton-accion-fila" data-convertir-presupuesto="${p.id}">Convertir a venta</button>
                  <button type="button" class="boton-accion-fila" data-editar-presupuesto="${p.id}">Editar</button>
                  <button type="button" class="boton-accion-fila peligro" data-eliminar-presupuesto="${p.id}">Eliminar</button>`
@@ -345,6 +345,21 @@ tablaPresupuestosBody.addEventListener("click", (e) => {
   const idEliminar = e.target.dataset.eliminarPresupuesto;
   const idConvertir = e.target.dataset.convertirPresupuesto;
   const idImprimir = e.target.dataset.imprimirPresupuesto;
+  const idRevertir = e.target.dataset.revertirPresupuesto;
+
+  if (idRevertir) {
+    const presupuesto = presupuestosCache.find((p) => p.id === idRevertir);
+    if (!presupuesto) return;
+    if (!confirm(
+      `¿Volver el presupuesto Nº ${presupuesto.numero ?? ""} a pendiente?\n\n` +
+      "Se elimina la venta que generó y se devuelve el stock que había descontado. " +
+      "El número de presupuesto no cambia."
+    )) return;
+    revertirPresupuesto(presupuesto).catch((error) => {
+      console.error(error);
+      alert("No se pudo revertir el presupuesto. Probá de nuevo.");
+    });
+  }
 
   if (idImprimir) {
     abrirModalImprimir(idImprimir);
@@ -590,6 +605,76 @@ async function convertirPresupuestoEnVenta(presupuesto, { fecha, medioPago, fact
     tx.update(presupuestoRef, {
       estado: "convertido",
       ventaGeneradaId: nuevaVentaRef.id
+    });
+  });
+}
+
+// =====================================================================
+// Volver un presupuesto convertido al estado pendiente
+// =====================================================================
+
+// Deshace la conversión: borra la venta generada, devuelve al stock lo
+// que esa venta había descontado, y deja el presupuesto otra vez
+// pendiente. El número correlativo NO se toca ni se reutiliza, así no
+// pueden existir dos presupuestos con el mismo número.
+async function revertirPresupuesto(presupuesto) {
+  const presupuestoRef = doc(presupuestosRef, presupuesto.id);
+
+  await runTransaction(db, async (tx) => {
+    let items = [];
+    let ventaRef = null;
+
+    if (presupuesto.ventaGeneradaId) {
+      ventaRef = doc(ventasRef, presupuesto.ventaGeneradaId);
+      const ventaSnap = await tx.get(ventaRef);
+      if (ventaSnap.exists()) items = ventaSnap.data().items || [];
+      else ventaRef = null;   // la venta ya no existe: solo se revierte el estado
+    }
+
+    const composicionesCache = {};
+    const deltaProductos = {};
+    const deltaElementos = {};
+
+    for (const it of items) {
+      if (it.tipo === "producto") {
+        deltaProductos[it.refId] = (deltaProductos[it.refId] || 0) + it.cantidad;
+      } else {
+        if (!(it.refId in composicionesCache)) {
+          const snap = await tx.get(doc(modulosRef, it.refId));
+          composicionesCache[it.refId] = snap.exists() ? snap.data().composicion || [] : [];
+        }
+        composicionesCache[it.refId].map(normalizarItemComposicion).forEach((c) => {
+          const total = c.cantidad * it.cantidad;
+          if (c.tipo === "elemento") deltaElementos[c.refId] = (deltaElementos[c.refId] || 0) + total;
+          else deltaProductos[c.refId] = (deltaProductos[c.refId] || 0) + total;
+        });
+      }
+    }
+
+    const lecturasProductos = [];
+    for (const id of Object.keys(deltaProductos)) {
+      const ref = doc(productosRef, id);
+      const snap = await tx.get(ref);
+      if (snap.exists()) lecturasProductos.push({ ref, nuevoStock: (snap.data().stockActual || 0) + deltaProductos[id] });
+    }
+    const lecturasElementos = [];
+    for (const id of Object.keys(deltaElementos)) {
+      const ref = doc(materiasPrimasRef, id);
+      const snap = await tx.get(ref);
+      if (snap.exists()) lecturasElementos.push({ ref, nuevoStock: (snap.data().stockActual || 0) + deltaElementos[id] });
+    }
+
+    lecturasProductos.forEach(({ ref, nuevoStock }) =>
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() }));
+    lecturasElementos.forEach(({ ref, nuevoStock }) =>
+      tx.update(ref, { stockActual: nuevoStock, actualizadoEn: serverTimestamp() }));
+
+    if (ventaRef) tx.delete(ventaRef);
+
+    tx.update(presupuestoRef, {
+      estado: "pendiente",
+      ventaGeneradaId: null,
+      actualizadoEn: serverTimestamp()
     });
   });
 }

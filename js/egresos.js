@@ -265,31 +265,78 @@ document.getElementById("btn-abrir-egreso").addEventListener("click", () => {
   abrirModal(modalEgreso);
 });
 
+// Igual que en Ventas: el mes en curso se muestra abierto y los
+// anteriores agrupados y cerrados, para no volcar cientos de filas.
+const mesesAbiertosEgresos = new Set();
+
+function filaEgreso(e) {
+  const fecha = e.fecha ? formatoFecha.format(e.fecha.toDate()) : "—";
+  return `
+    <tr>
+      <td>${fecha}</td>
+      <td>${escapeHtml(nombreCategoria(e.categoriaId))}</td>
+      <td>${escapeHtml(e.descripcion)}</td>
+      <td class="col-numero">${formatoMoneda.format(e.monto)}</td>
+      <td>${escapeHtml(e.medioPago)}</td>
+      <td>${e.tieneFactura ? "Sí" : "No"}</td>
+      <td class="col-acciones">
+        <button type="button" class="boton-accion-fila" data-editar-egreso="${e.id}">Editar</button>
+        <button type="button" class="boton-accion-fila peligro" data-eliminar-egreso="${e.id}">Eliminar</button>
+      </td>
+    </tr>`;
+}
+
 function renderTablaEgresos() {
   const filtradas = aplicarFiltrosEgresos(egresosCache);
   if (filtradas.length === 0) {
     tablaEgresosBody.innerHTML = '<tr><td colspan="7" class="fila-vacia">No hay egresos que coincidan con el filtro.</td></tr>';
     return;
   }
-  tablaEgresosBody.innerHTML = filtradas
-    .map((e) => {
-      const fecha = e.fecha ? formatoFecha.format(e.fecha.toDate()) : "—";
-      return `
-      <tr>
-        <td>${fecha}</td>
-        <td>${escapeHtml(nombreCategoria(e.categoriaId))}</td>
-        <td>${escapeHtml(e.descripcion)}</td>
-        <td class="col-numero">${formatoMoneda.format(e.monto)}</td>
-        <td>${escapeHtml(e.medioPago)}</td>
-        <td>${e.tieneFactura ? "Sí" : "No"}</td>
-        <td class="col-acciones">
-          <button type="button" class="boton-accion-fila" data-editar-egreso="${e.id}">Editar</button>
-          <button type="button" class="boton-accion-fila peligro" data-eliminar-egreso="${e.id}">Eliminar</button>
-        </td>
-      </tr>`;
-    })
-    .join("");
+
+  const mesActual = claveMes(new Date());
+  const hayFiltro = inputFiltroMesEgreso.value || selectFiltroCategoria.value || inputFiltroTextoEgreso.value.trim();
+  if (hayFiltro) {
+    tablaEgresosBody.innerHTML = filtradas.map(filaEgreso).join("");
+    return;
+  }
+
+  const grupos = new Map();
+  filtradas.forEach((e) => {
+    const k = e.fecha ? claveMes(e.fecha.toDate()) : "sin-fecha";
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(e);
+  });
+
+  let html = "";
+  for (const [clave, lista] of grupos) {
+    const esActual = clave === mesActual;
+    const abierto = esActual || mesesAbiertosEgresos.has(clave);
+    const total = lista.reduce((a, e) => a + (e.monto || 0), 0);
+
+    if (!esActual) {
+      const etiqueta = clave === "sin-fecha" ? "Sin fecha" : etiquetaMes(clave);
+      html += `
+        <tr class="fila-grupo-mes" data-mes="${clave}">
+          <td colspan="7">
+            <span class="flecha">${abierto ? "▾" : "▸"}</span>
+            ${escapeHtml(etiqueta)}
+            <span class="resumen-grupo">${lista.length} egreso(s) · ${formatoMoneda.format(total)}</span>
+          </td>
+        </tr>`;
+    }
+    if (abierto) html += lista.map(filaEgreso).join("");
+  }
+  tablaEgresosBody.innerHTML = html;
 }
+
+tablaEgresosBody.addEventListener("click", (e) => {
+  const fila = e.target.closest(".fila-grupo-mes");
+  if (!fila) return;
+  const mes = fila.dataset.mes;
+  if (mesesAbiertosEgresos.has(mes)) mesesAbiertosEgresos.delete(mes);
+  else mesesAbiertosEgresos.add(mes);
+  renderTablaEgresos();
+});
 
 onSnapshot(query(egresosRef, orderBy("fecha", "desc"), limit(3000)), (snapshot) => {
   egresosCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));

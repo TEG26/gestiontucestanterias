@@ -143,32 +143,91 @@ function resumenItemsVenta(items) {
   return items.map((it) => `${it.nombreSnapshot} x${formatoNumero.format(it.cantidad)}`).join(", ");
 }
 
+// Meses cuyo grupo el usuario abrió a mano. El mes en curso arranca
+// siempre abierto; los anteriores, cerrados, para que la pantalla no
+// muestre cientos de filas de entrada.
+const mesesAbiertos = new Set();
+
+function claveMesVenta(v) {
+  return v.fecha ? dateAFechaInput(v.fecha.toDate()).slice(0, 7) : "sin-fecha";
+}
+function etiquetaMesVenta(clave) {
+  if (clave === "sin-fecha") return "Sin fecha";
+  const [a, m] = clave.split("-").map(Number);
+  const t = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(new Date(a, m - 1, 1));
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function filaVenta(v) {
+  const fecha = v.fecha ? formatoFecha.format(v.fecha.toDate()) : "—";
+  const resumen = resumenItemsVenta(v.items || []);
+  return `
+    <tr>
+      <td>${fecha}</td>
+      <td>${escapeHtml(v.cliente)}</td>
+      <td><span class="receta-resumen" title="${escapeHtml(resumen)}">${escapeHtml(resumen)}</span></td>
+      <td>${escapeHtml(v.medioPago)}</td>
+      <td class="col-numero">${formatoMoneda.format(v.montoTotal)}</td>
+      <td class="col-acciones">
+        <button type="button" class="boton-accion-fila" data-ver-remito="${v.id}">Remito</button>
+        <button type="button" class="boton-accion-fila" data-editar-venta="${v.id}">Editar</button>
+        <button type="button" class="boton-accion-fila peligro" data-eliminar-venta="${v.id}">Eliminar</button>
+      </td>
+    </tr>`;
+}
+
 function renderTablaVentas() {
   const ventasFiltradas = aplicarFiltrosVentas(ventasCache);
   if (ventasFiltradas.length === 0) {
     tablaVentasBody.innerHTML = '<tr><td colspan="6" class="fila-vacia">No hay ventas que coincidan con el filtro.</td></tr>';
     return;
   }
-  tablaVentasBody.innerHTML = ventasFiltradas
-    .map((v) => {
-      const fecha = v.fecha ? formatoFecha.format(v.fecha.toDate()) : "—";
-      const resumen = resumenItemsVenta(v.items || []);
-      return `
-      <tr>
-        <td>${fecha}</td>
-        <td>${escapeHtml(v.cliente)}</td>
-        <td><span class="receta-resumen" title="${escapeHtml(resumen)}">${escapeHtml(resumen)}</span></td>
-        <td>${escapeHtml(v.medioPago)}</td>
-        <td class="col-numero">${formatoMoneda.format(v.montoTotal)}</td>
-        <td class="col-acciones">
-          <button type="button" class="boton-accion-fila" data-ver-remito="${v.id}">Remito</button>
-          <button type="button" class="boton-accion-fila" data-editar-venta="${v.id}">Editar</button>
-          <button type="button" class="boton-accion-fila peligro" data-eliminar-venta="${v.id}">Eliminar</button>
-        </td>
-      </tr>`;
-    })
-    .join("");
+
+  const mesActual = dateAFechaInput(new Date()).slice(0, 7);
+  const hayFiltro = inputFiltroMes.value || inputFiltroCliente.value.trim() || inputFiltroTexto.value.trim();
+
+  // Con un filtro puesto se muestra todo plano: el usuario ya acotó.
+  if (hayFiltro) {
+    tablaVentasBody.innerHTML = ventasFiltradas.map(filaVenta).join("");
+    return;
+  }
+
+  const grupos = new Map();
+  ventasFiltradas.forEach((v) => {
+    const k = claveMesVenta(v);
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(v);
+  });
+
+  let html = "";
+  for (const [clave, lista] of grupos) {
+    const esActual = clave === mesActual;
+    const abierto = esActual || mesesAbiertos.has(clave);
+    const total = lista.reduce((a, v) => a + (v.montoTotal || 0), 0);
+
+    if (!esActual) {
+      html += `
+        <tr class="fila-grupo-mes" data-mes="${clave}">
+          <td colspan="6">
+            <span class="flecha">${abierto ? "▾" : "▸"}</span>
+            ${escapeHtml(etiquetaMesVenta(clave))}
+            <span class="resumen-grupo">${lista.length} venta(s) · ${formatoMoneda.format(total)}</span>
+          </td>
+        </tr>`;
+    }
+    if (abierto) html += lista.map(filaVenta).join("");
+  }
+  tablaVentasBody.innerHTML = html;
 }
+
+tablaVentasBody.addEventListener("click", (e) => {
+  const fila = e.target.closest(".fila-grupo-mes");
+  if (!fila) return;
+  const mes = fila.dataset.mes;
+  if (mesesAbiertos.has(mes)) mesesAbiertos.delete(mes);
+  else mesesAbiertos.add(mes);
+  renderTablaVentas();
+});
 
 onSnapshot(query(ventasRef, orderBy("fecha", "desc"), limit(2000)), (snapshot) => {
   ventasCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
